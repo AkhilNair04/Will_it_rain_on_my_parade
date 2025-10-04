@@ -1,180 +1,88 @@
-import NasaDataService from "../services/nasa.services.js";
-import OpenWeatherMapService from "../services/openWeather.services.js";
-import PredictionService from "../services/prediction.services.js";
+import NasaDataService from '../services/nasa.services.js';
+import OpenWeatherMapService from '../services/openWeather.services.js';
 
-export const weatherCheck = async (req, res) => {
-  console.log("🚀 [WEATHER CONTROLLER] Starting weather check request");
-  console.log(
-    "📥 [WEATHER CONTROLLER] Request body:",
-    JSON.stringify(req.body, null, 2)
-  );
+export const predictWeather = async (req, res) => {
+    console.log("🚀 [WEATHER CONTROLLER] Starting weather check request");
+    console.log("📥 [WEATHER CONTROLLER] Request body:", JSON.stringify(req.body, null, 2));
 
-  try {
-    const { city, latitude, longitude, start_hour, end_hour } = req.body;
+    try {
+        let { city, latitude, longitude, forecast_date, start_hour = 12, end_hour = 12 } = req.body;
+        
+        // --- Geocoding Logic ---
+        if (!latitude || !longitude) {
+            if (!city) return res.status(400).json({ error: "Missing city or coordinates." });
+            const coords = await OpenWeatherMapService.getCoordinates(city);
+            latitude = coords.lat;
+            longitude = coords.lon;
+        }
 
-    console.log("🔍 [WEATHER CONTROLLER] Extracted parameters:");
-    console.log("   - location_name:", city);
-    console.log("   - latitude:", latitude);
-    console.log("   - longitude:", longitude);
-    console.log("   - start_hour:", start_hour);
-    console.log("   - end_hour:", end_hour);
+        console.log(`🌍 [WEATHER CONTROLLER] Processing for ${city || 'Custom Location'} (${latitude}, ${longitude})`);
 
-    // Validate required fields
-    if (
-      !city ||
-      !latitude ||
-      !longitude ||
-      start_hour === undefined ||
-      end_hour === undefined
-    ) {
-      console.log(
-        "❌ [WEATHER CONTROLLER] Validation failed - missing required fields"
-      );
-      return res.status(400).json({
-        error:
-          "Missing required fields: city, latitude, longitude, start_hour, end_hour",
-      });
+        // --- Step 1: Get Historical Statistics ---
+        console.log("📡 [WEATHER CONTROLLER] Step 1: Calling NASA Data Service to get historical stats...");
+        const { modelInfo, historicalAvgSoilWetness } = await NasaDataService.getHistoricalStats(latitude, longitude);
+        console.log("✅ [WEATHER CONTROLLER] Historical data analysis completed.");
+
+        // --- Step 2: Get Live Forecast ---
+        console.log("🌤️ [WEATHER CONTROLLER] Step 2: Calling OpenWeatherMap Service...");
+        const liveForecast = await OpenWeatherMapService.getLiveForecast(latitude, longitude, start_hour, end_hour);
+        console.log("✅ [WEATHER CONTROLLER] Live forecast received.");
+
+        // --- Step 3: Make Prediction with Statistical Model ---
+        console.log("🎯 [WEATHER CONTROLLER] Step 3: Making statistical prediction...");
+        const predicted_mm = NasaDataService.predictRainfall(liveForecast, modelInfo);
+        console.log(`✅ [WEATHER CONTROLLER] Prediction completed: ${predicted_mm.toFixed(2)}mm`);
+
+        // --- Step 4: Descriptive Analysis ---
+        console.log("🌡️ [WEATHER CONTROLLER] Generating weather outlooks...");
+        const temp = liveForecast.T2M_MAX;
+        const wind = liveForecast.WS2M;
+
+        let tempOutlook;
+        if (temp >= 37) tempOutlook = "Extremely Hot"; else if (temp >= 30) tempOutlook = "Hot"; else if (temp >= 24) tempOutlook = "Warm"; else if (temp >= 17) tempOutlook = "Mild / Pleasant"; else if (temp >= 10) tempOutlook = "Cool"; else if (temp >= 0) tempOutlook = "Cold"; else if (temp >= -10) tempOutlook = "Freezing"; else tempOutlook = "Extremely Cold";
+
+        let windOutlook;
+        if (wind >= 17.0) windOutlook = "Gale Force Winds / Very Stormy"; else if (wind >= 11.0) windOutlook = "Strong Wind"; else if (wind >= 5.5) windOutlook = "Moderate Breeze / Windy"; else if (wind >= 1.5) windOutlook = "Light Breeze"; else windOutlook = "Calm";
+
+        let rainOutlook;
+        if (predicted_mm > 50) rainOutlook = "Extreme Rainfall / Downpour"; else if (predicted_mm > 10) rainOutlook = "Heavy Rain"; else if (predicted_mm > 3.5) rainOutlook = "Moderate Rain"; else if (predicted_mm > 0.5) rainOutlook = "Light Rain"; else if (predicted_mm > 0) rainOutlook = "Drizzle / Very Light Rain"; else rainOutlook = "No Chance of Rain";
+
+        const erosion_risk = (predicted_mm > 10.0 && historicalAvgSoilWetness > 0.6) ? "High" : "Low";
+        const description = `The weather will be ${tempOutlook.toLowerCase()} and ${windOutlook.toLowerCase()}, with a forecast of ${rainOutlook.toLowerCase()}.`;
+        
+        console.log("🔮 [WEATHER CONTROLLER] Generated outlooks complete.");
+
+        const final_result = {
+            input_location: { name: city || "Custom Location", latitude, longitude, forecast_date },
+            model_details: {
+                training_data_source: "NASA POWER Project",
+                historical_data_range_years: 5,
+                model_type: "Statistical Ridge Regression Analysis",
+                coefficients: modelInfo.coefficients,
+                intercept: modelInfo.intercept,
+                description: "Uses historical weather patterns and statistical relationships for rainfall prediction"
+            },
+            live_forecast_values: {
+                temperature_max_celsius: Math.round(liveForecast.T2M_MAX * 100) / 100,
+                humidity_percent: Math.round(liveForecast.RH2M),
+                wind_speed_mps: Math.round(liveForecast.WS2M * 100) / 100,
+                api_pop_percent: Math.round(liveForecast.API_POP_PERCENT)
+            },
+            prediction_output: {
+                predicted_rainfall_mm: Math.round(predicted_mm * 100) / 100,
+                temperature_outlook: tempOutlook,
+                wind_outlook: windOutlook,
+                rain_outlook: rainOutlook,
+                erosion_risk: erosion_risk,
+                final_summary: description
+            }
+        };
+
+        console.log("✅ [WEATHER CONTROLLER] Final result prepared. Sending response.");
+        res.json(final_result);
+
+    } catch (error) {
+        console.error("❌ [WEATHER CONTROLLER] An error occurred:", error.message);
+        res.status(500).json({ message: "An internal server error occurred.", details: error.message });
     }
-
-    console.log("✅ [WEATHER CONTROLLER] Validation passed");
-    console.log(
-      `🌍 [WEATHER CONTROLLER] Processing weather request for ${city} (${latitude}, ${longitude})`
-    );
-
-    // Step 1: Get historical data from NASA
-    console.log("📡 [WEATHER CONTROLLER] Step 1: Calling NASA Data Service...");
-    const { avgRainfall, avgSoilWetness } =
-      await NasaDataService.getHistoricalStats(latitude, longitude);
-    console.log("✅ [WEATHER CONTROLLER] NASA data received:");
-    console.log("   - avgRainfall:", avgRainfall);
-    console.log("   - avgSoilWetness:", avgSoilWetness);
-
-    // Step 2: Get live forecast from OpenWeatherMap
-    console.log(
-      "🌤️ [WEATHER CONTROLLER] Step 2: Calling OpenWeatherMap Service..."
-    );
-    const liveForecast = await OpenWeatherMapService.getLiveForecast(
-      latitude,
-      longitude,
-      start_hour,
-      end_hour
-    );
-    console.log("✅ [WEATHER CONTROLLER] Live forecast received:");
-    console.log("   - liveForecast:", JSON.stringify(liveForecast, null, 2));
-
-    // Step 3: Make prediction
-    console.log(
-      "🎯 [WEATHER CONTROLLER] Step 3: Making rainfall prediction..."
-    );
-    const predicted_mm = PredictionService.predictRainfall(
-      liveForecast,
-      avgRainfall
-    );
-    console.log("✅ [WEATHER CONTROLLER] Prediction completed:");
-    console.log("   - predicted_mm:", predicted_mm);
-
-    // Determine erosion risk
-    console.log("⚖️ [WEATHER CONTROLLER] Calculating erosion risk...");
-    let erosionRisk = "Low";
-    if (predicted_mm > 10 && avgSoilWetness > 0.6) {
-      erosionRisk = "High";
-    } else if (predicted_mm > 5 && avgSoilWetness > 0.4) {
-      erosionRisk = "Medium";
-    }
-    console.log("   - erosionRisk:", erosionRisk);
-
-    // Generate weather outlooks
-    console.log("🌡️ [WEATHER CONTROLLER] Generating weather outlooks...");
-    const temp = liveForecast.T2M_MAX;
-    const humidity = liveForecast.RH2M;
-    const wind = liveForecast.WS2M;
-    const apiPop = liveForecast.API_POP_PERCENT;
-
-    console.log("📊 [WEATHER CONTROLLER] Weather values:");
-    console.log("   - temperature:", temp);
-    console.log("   - humidity:", humidity);
-    console.log("   - wind:", wind);
-    console.log("   - apiPop:", apiPop);
-
-    // Temperature outlook
-    let tempOutlook;
-    if (temp >= 37) tempOutlook = "Extremely Hot";
-    else if (temp >= 30) tempOutlook = "Hot";
-    else if (temp >= 24) tempOutlook = "Warm";
-    else if (temp >= 17) tempOutlook = "Mild / Pleasant";
-    else if (temp >= 10) tempOutlook = "Cool";
-    else if (temp >= 0) tempOutlook = "Cold";
-    else if (temp >= -10) tempOutlook = "Freezing";
-    else tempOutlook = "Extremely Cold";
-
-    // Wind outlook
-    let windOutlook;
-    if (wind >= 17.0) windOutlook = "Gale Force Winds / Very Stormy";
-    else if (wind >= 11.0) windOutlook = "Strong Wind";
-    else if (wind >= 5.5) windOutlook = "Moderate Breeze / Windy";
-    else if (wind >= 1.5) windOutlook = "Light Breeze";
-    else windOutlook = "Calm";
-
-    // Rain outlook
-    let rainOutlook;
-    if (predicted_mm > 50) rainOutlook = "Extreme Rainfall / Downpour";
-    else if (predicted_mm > 10) rainOutlook = "Heavy Rain";
-    else if (predicted_mm > 3.5) rainOutlook = "Moderate Rain";
-    else if (predicted_mm > 0.5) rainOutlook = "Light Rain";
-    else if (predicted_mm > 0) rainOutlook = "Drizzle / Very Light Rain";
-    else rainOutlook = "No Chance of Rain";
-
-    console.log("🔮 [WEATHER CONTROLLER] Generated outlooks:");
-    console.log("   - tempOutlook:", tempOutlook);
-    console.log("   - windOutlook:", windOutlook);
-    console.log("   - rainOutlook:", rainOutlook);
-
-    const description = `The weather will be ${tempOutlook.toLowerCase()} and ${windOutlook.toLowerCase()}, with a forecast of ${rainOutlook.toLowerCase()}.`;
-    console.log("📝 [WEATHER CONTROLLER] Final description:", description);
-
-    const result = {
-      input_location: {
-        location_name: city,
-        latitude,
-        longitude,
-      },
-      historical_data: {
-        avg_rainfall_mm: avgRainfall,
-        avg_soil_wetness: avgSoilWetness,
-        data_source: "NASA POWER Project",
-        historical_range_years: 5,
-      },
-      live_forecast_values: {
-        temperature_max_celsius: temp,
-        humidity_percent: humidity,
-        wind_speed_mps: wind,
-        pressure_kpa: liveForecast.PS,
-        api_pop_percent: apiPop,
-      },
-      prediction_output: {
-        predicted_rainfall_mm: predicted_mm,
-        temperature_outlook: tempOutlook,
-        wind_outlook: windOutlook,
-        rain_outlook: rainOutlook,
-        erosion_risk: erosionRisk,
-        final_summary: description,
-      },
-    };
-
-    console.log("✅ [WEATHER CONTROLLER] Final result prepared:");
-    console.log(JSON.stringify(result, null, 2));
-    console.log("📤 [WEATHER CONTROLLER] Sending response to client");
-
-    res.json(result);
-  } catch (err) {
-    console.error("❌ [WEATHER CONTROLLER] ERROR occurred:");
-    console.error("   - Error message:", err.message);
-    console.error("   - Error stack:", err.stack);
-    console.error(
-      "   - Request body that caused error:",
-      JSON.stringify(req.body, null, 2)
-    );
-
-    res.status(500).json({ error: err.message });
-  }
 };
