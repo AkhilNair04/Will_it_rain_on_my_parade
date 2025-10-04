@@ -26,14 +26,6 @@ router.get("/", (req, res) => {
                 end_hour: "number (default: 12)"
             }
         },
-        example: {
-            city: "Riyadh",
-            latitude: 24.7136,
-            longitude: 46.6753,
-            forecast_date: "2025-10-05",
-            start_hour: 10,
-            end_hour: 16
-        }
     });
 });
 
