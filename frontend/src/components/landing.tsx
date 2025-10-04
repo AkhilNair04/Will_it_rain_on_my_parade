@@ -1,9 +1,9 @@
-import React from 'react';
 import { Search, MapPin, CloudSun } from 'lucide-react';
 
 export default function WeatherWiseLanding() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 via-slate-800 to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-900 via-slate-800 to-gray-900 -z-10"></div>
       <div className="max-w-2xl w-full">
         {/* Header */}
         <div className="text-center mb-8">
@@ -21,17 +21,17 @@ export default function WeatherWiseLanding() {
             Know Your Weather Odds.
           </h2>
 
-          {/* Action Buttons */}
+          {/* Action Buttons with Glassmorphism */}
           <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-            <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+            <button className="flex items-center gap-2 bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
               <Search className="w-4 h-4" />
               Search for Place
             </button>
-            <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+            <button className="flex items-center gap-2 bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
               <MapPin className="w-4 h-4" />
               Use My Location
             </button>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium transition-colors">
+            <button className="bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
               Explore on Map
             </button>
           </div>
