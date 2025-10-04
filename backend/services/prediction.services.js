@@ -65,16 +65,23 @@ class PredictionService {
     rainProbability += windFactor;
 
     // Low atmospheric pressure is a very strong indicator of rain.
+    // This new logic is more granular and penalizes high pressure.
     let pressureFactor = 0;
-    if (PS < 101.0) {
-      // Converted from kPa to more standard hPa comparison
-      pressureFactor = 0.3;
-      console.log("   - Pressure < 101.0 kPa (low): +0.3");
-    } else if (PS < 101.5) {
-      pressureFactor = 0.15;
-      console.log("   - Pressure < 101.5 kPa (moderate low): +0.15");
+    if (PS < 100.5) { // Very low pressure (<1005 hPa), strong storm signal
+      pressureFactor = 0.4;
+      console.log("   - Pressure < 100.5 kPa (very low): +0.4");
+    } else if (PS < 101.0) { // Low pressure (<1010 hPa), good rain indicator
+      pressureFactor = 0.25;
+      console.log("   - Pressure < 101.0 kPa (low): +0.25");
+    } else if (PS < 101.5) { // Slightly below average pressure
+      pressureFactor = 0.1;
+      console.log("   - Pressure < 101.5 kPa (slightly low): +0.1");
+    } else if (PS > 102.2) { // Very high pressure (>1022 hPa), strong clear sky signal
+      pressureFactor = -0.3; // SUBTRACT points for high pressure
+      console.log("   - Pressure > 102.2 kPa (very high): -0.3");
     } else {
-      console.log("   - Pressure >= 101.5 kPa (normal/high): +0");
+      // Normal pressure range (101.5 to 102.2 kPa) adds no points.
+      console.log("   - Pressure is in normal range: +0");
     }
     rainProbability += pressureFactor;
 
