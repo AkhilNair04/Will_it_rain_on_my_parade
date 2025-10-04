@@ -1,168 +1,929 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import {
+  WiThermometer,
+  WiRaindrops,
+  WiStrongWind,
+  WiDaySunny,
+} from "react-icons/wi";
+import { FiSearch, FiAlertTriangle, FiXCircle, FiMap, FiMapPin } from "react-icons/fi";
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
+import markerIcon from 'leaflet/dist/images/marker-icon.png';
+import markerShadow from 'leaflet/dist/images/marker-shadow.png';
 
-const cardData = [
+// Fix for default Leaflet icon issue with webpack
+delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: () => void })._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+});
+
+type LocationData = {
+  id: string;
+  city: string;
+  temperature: number;
+  rainfall: number;
+  wind: number;
+  comfort: number;
+  lat: number;
+  lng: number;
+  forecast: Record<string, "sunny" | "rain" | "snow">; // weather per date
+};
+
+// 🌤️ Sample mock data with coordinates for map plotting
+const allLocationsData: LocationData[] = [
   {
+    id: "sf",
     city: "San Francisco",
-    temperature: "22°C",
-    rainfall: "0.2mm",
-    wind: "15 km/h",
-    comfort: "8/10",
-    images: [
-      "/images/thermometer.png",
-      "/images/rainfall.png",
-      "/images/wind.png",
-      "/images/sun.png",
-    ],
+    temperature: 22,
+    rainfall: 0.2,
+    wind: 15,
+    comfort: 8,
+    lat: 37.7749,
+    lng: -122.4194,
+    forecast: {
+      "2025-10-04": "rain",
+      "2025-10-05": "sunny",
+      "2025-10-06": "snow",
+    },
   },
   {
+    id: "ny",
     city: "New York",
-    temperature: "28°C",
-    rainfall: "0.5mm",
-    wind: "20 km/h",
-    comfort: "7/10",
-    images: [
-      "/images/thermometer2.png",
-      "/images/rainfall2.png",
-      "/images/wind2.png",
-      "/images/sun2.png",
-    ],
+    temperature: 28,
+    rainfall: 0.5,
+    wind: 20,
+    comfort: 7,
+    lat: 40.7128,
+    lng: -74.0060,
+    forecast: {
+      "2025-10-04": "sunny",
+      "2025-10-05": "rain",
+      "2025-10-06": "snow",
+    },
+  },
+  {
+    id: "london",
+    city: "London",
+    temperature: 18,
+    rainfall: 1.2,
+    wind: 25,
+    comfort: 6,
+    lat: 51.5074,
+    lng: -0.1278,
+    forecast: {
+      "2025-10-04": "rain",
+      "2025-10-05": "rain",
+      "2025-10-06": "snow",
+    },
+  },
+  {
+    id: "tokyo",
+    city: "Tokyo",
+    temperature: 37,
+    rainfall: 3.2,
+    wind: 18,
+    comfort: 5,
+    lat: 35.6762,
+    lng: 139.6503,
+    forecast: {
+      "2025-10-04": "sunny",
+      "2025-10-05": "rain",
+      "2025-10-06": "sunny",
+    },
+  },
+  {
+    id: "sydney",
+    city: "Sydney",
+    temperature: 25,
+    rainfall: 0.1,
+    wind: 22,
+    comfort: 9,
+    lat: -33.8688,
+    lng: 151.2093,
+    forecast: {
+      "2025-10-04": "sunny",
+      "2025-10-05": "sunny",
+      "2025-10-06": "rain",
+    },
+  },
+  {
+    id: "mumbai",
+    city: "Mumbai",
+    temperature: 42,
+    rainfall: 4.5,
+    wind: 12,
+    comfort: 4,
+    lat: 19.0760,
+    lng: 72.8777,
+    forecast: {
+      "2025-10-04": "rain",
+      "2025-10-05": "rain",
+      "2025-10-06": "sunny",
+    },
+  },
+  {
+    id: "dubai",
+    city: "Dubai",
+    temperature: 45,
+    rainfall: 0.0,
+    wind: 40,
+    comfort: 3,
+    lat: 25.2048,
+    lng: 55.2708,
+    forecast: {
+      "2025-10-04": "sunny",
+      "2025-10-05": "sunny",
+      "2025-10-06": "sunny",
+    },
   },
 ];
 
-const pageStyle: React.CSSProperties = {
-  background: "#101828",
-  minHeight: "100vh",
-  color: "#fff",
-  fontFamily: "Inter, sans-serif",
-  padding: "32px",
-};
+const MetricTile = ({
+  icon,
+  title,
+  value,
+  isAlert = false,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+  isAlert?: boolean;
+}) => (
+  <div className={`bg-white/10 backdrop-blur-lg p-5 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 ${
+    isAlert ? 'border-red-500/60 bg-red-500/10 animate-pulse' : 'border-blue-400/30'
+  }`}>
+    <div className="flex items-center gap-2 mb-2">
+      {isAlert && <FiAlertTriangle className="text-red-400 animate-bounce" />}
+      {icon}
+      <span className={`font-semibold text-sm ${isAlert ? 'text-red-300' : 'text-blue-300'}`}>{title}</span>
+    </div>
+    <span className={`text-lg font-medium ${isAlert ? 'text-red-200' : 'text-white'}`}>{value}</span>
+  </div>
+);
 
-const headerStyle: React.CSSProperties = {
-  fontSize: "2.5rem",
-  fontWeight: 700,
-  marginBottom: "32px",
-};
+// Helper component to change the map's view programmatically
+function ChangeMapView({ coords }: { coords: L.LatLng }) {
+  const map = useMap();
+  useEffect(() => {
+    if (coords) {
+      map.flyTo(coords, 13);
+    }
+  }, [coords, map]);
+  return null;
+}
 
-const searchRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "24px",
-  marginBottom: "32px",
-};
+// Leaflet Map Component for Location Selection
+const InteractiveMap = ({ 
+  onLocationSelect, 
+  title,
+  selectedLocation,
+  className = ""
+}: { 
+  onLocationSelect: (location: { lat: number; lng: number; name: string }) => void;
+  title: string;
+  selectedLocation?: { lat: number; lng: number; name: string };
+  className?: string;
+}) => {
+  const [markerPosition, setMarkerPosition] = useState<L.LatLng | null>(
+    selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : new L.LatLng(40.7128, -74.0060)
+  );
+  const [searchQuery, setSearchQuery] = useState('');
 
-const searchBoxStyle: React.CSSProperties = {
-  background: "#1A2442",
-  border: "none",
-  borderRadius: "12px",
-  padding: "16px",
-  color: "#fff",
-  fontSize: "1rem",
-  width: "100%",
-  maxWidth: "400px",
-};
+  // Update marker position when selectedLocation changes
+  useEffect(() => {
+    if (selectedLocation) {
+      setMarkerPosition(new L.LatLng(selectedLocation.lat, selectedLocation.lng));
+    }
+  }, [selectedLocation]);
 
-const cardsRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "32px",
-  justifyContent: "flex-start",
-};
+  // Component to handle map clicks
+  const MapClickHandler = () => {
+    useMapEvents({
+      click(e) {
+        const { lat, lng } = e.latlng;
+        setMarkerPosition(e.latlng);
 
-const cardStyle: React.CSSProperties = {
-  background: "#1A2442",
-  borderRadius: "24px",
-  padding: "24px",
-  minWidth: "340px",
-  display: "flex",
-  flexDirection: "column",
-  gap: "16px",
-};
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
+          .then(response => response.json())
+          .then(data => {
+            const placeName = data.display_name || 'Unknown Location';
+            const cityName = data.address?.city || data.address?.town || data.address?.village || placeName.split(',')[0];
+            onLocationSelect({ lat, lng, name: cityName });
+          })
+          .catch(error => {
+            console.error("Error fetching location name:", error);
+            onLocationSelect({ lat, lng, name: 'Unknown Location' });
+          });
+      },
+    });
+    return null;
+  };
 
-const cityStyle: React.CSSProperties = {
-  fontSize: "1.5rem",
-  fontWeight: 700,
-  marginBottom: "12px",
-};
+  // Function to handle the search
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
 
-const metricsRowStyle: React.CSSProperties = {
-  display: "flex",
-  gap: "16px",
-  flexWrap: "wrap",
-};
+    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`)
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          const { lat, lon } = data[0];
+          const newPos = new L.LatLng(parseFloat(lat), parseFloat(lon));
+          setMarkerPosition(newPos);
+          const cityName = data[0].address?.city || data[0].address?.town || data[0].display_name.split(',')[0];
+          onLocationSelect({ lat: parseFloat(lat), lng: parseFloat(lon), name: cityName });
+        } else {
+          alert("Location not found!");
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching geocoding data:", error);
+        alert("Error finding location.");
+      });
+  };
 
-const metricStyle: React.CSSProperties = {
-  background: "#101828",
-  borderRadius: "16px",
-  padding: "16px",
-  minWidth: "140px",
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: "8px",
-};
+  // Get user's current location
+  const useMyLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newPos = new L.LatLng(latitude, longitude);
+          setMarkerPosition(newPos);
+          
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+            .then(response => response.json())
+            .then(data => {
+              const cityName = data.address?.city || data.address?.town || data.address?.village || 'My Location';
+              onLocationSelect({ lat: latitude, lng: longitude, name: cityName });
+            })
+            .catch(() => {
+              onLocationSelect({ lat: latitude, lng: longitude, name: 'My Location' });
+            });
+        },
+        (error) => {
+          console.error("Geolocation error:", error);
+          alert("Unable to get your location. Please make sure location services are enabled.");
+        }
+      );
+    } else {
+      alert("Geolocation is not supported by this browser.");
+    }
+  };
 
-const metricTitleStyle: React.CSSProperties = {
-  fontWeight: 600,
-  fontSize: "1rem",
-};
-
-const metricValueStyle: React.CSSProperties = {
-  fontSize: "1.1rem",
-  marginBottom: "4px",
-};
-
-const metricImgStyle: React.CSSProperties = {
-  width: "48px",
-  height: "48px",
-  borderRadius: "12px",
-  objectFit: "cover",
-};
-
-export default function CompareLocations() {
   return (
-    <div style={pageStyle}>
-      <div style={headerStyle}>Compare Locations</div>
-      <div style={searchRowStyle}>
+    <div className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-blue-400/30 ${className}`}>
+      <h3 className="text-blue-300 font-semibold mb-4 text-center">{title}</h3>
+      
+      {/* Search bar */}
+      <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <input
-          style={searchBoxStyle}
           type="text"
-          value="San Francisco, CA"
-          readOnly
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search for a location..."
+          className="flex-grow bg-white/10 backdrop-blur-sm text-white px-3 py-2 rounded-lg border border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300"
         />
-        <input
-          style={searchBoxStyle}
-          type="text"
-          value="New York, NY"
-          readOnly
-        />
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition-colors">
+          <FiSearch className="w-5 h-5 text-white" />
+        </button>
+      </form>
+
+      <div className="relative h-64 rounded-xl overflow-hidden mb-4">
+        <MapContainer 
+          center={markerPosition || [20, 0]} 
+          zoom={markerPosition ? 10 : 3} 
+          scrollWheelZoom={true} 
+          style={{ height: '100%', width: '100%' }}
+          className="z-10"
+        >
+          <TileLayer
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          />
+          <MapClickHandler />
+          {markerPosition && (
+            <>
+              <Marker position={markerPosition}>
+                <Popup>
+                  {selectedLocation?.name || 'Selected Location'}
+                </Popup>
+              </Marker>
+              <ChangeMapView coords={markerPosition} />
+            </>
+          )}
+        </MapContainer>
       </div>
-      <div style={cardsRowStyle}>
-        {cardData.map((city) => (
-          <div key={city.city} style={cardStyle}>
-            <div style={cityStyle}>{city.city}</div>
-            <div style={metricsRowStyle}>
-              <div style={metricStyle}>
-                <span style={metricTitleStyle}>Temperature</span>
-                <img src={city.images[0]} alt="Temperature" style={metricImgStyle} />
-                <span style={metricValueStyle}>{city.temperature}</span>
+      
+      <button 
+        onClick={useMyLocation}
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-600/50 transform hover:scale-105"
+      >
+        <FiMapPin className="w-5 h-5" />
+        Use My Location
+      </button>
+      
+      {selectedLocation && (
+        <div className="mt-3 text-center text-blue-200 text-sm">
+          Selected: {selectedLocation.name}
+        </div>
+      )}
+    </div>
+  );
+};
+
+const CompareLocations: React.FC = () => {
+  const [location1, setLocation1] = useState("sf");
+  const [location2, setLocation2] = useState("ny");
+  const [selectedDate, setSelectedDate] = useState("2025-10-04");
+  const [weatherMode, setWeatherMode] = useState<"rain" | "snow" | "sunny">("sunny");
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
+  const [alertType, setAlertType] = useState<"danger" | "warning" | "info">("danger");
+  const [showMap, setShowMap] = useState(false);
+  const [location1Data, setLocation1Data] = useState({ lat: 37.7749, lng: -122.4194, name: "San Francisco" });
+  const [location2Data, setLocation2Data] = useState({ lat: 40.7128, lng: -74.0060, name: "New York" });
+  const [customLocation1, setCustomLocation1] = useState<LocationData | null>(null);
+  const [customLocation2, setCustomLocation2] = useState<LocationData | null>(null);
+
+  // Generate random weather data for custom locations
+  const generateWeatherData = (location: { lat: number; lng: number; name: string }): LocationData => {
+    return {
+      id: `custom_${Date.now()}_${Math.random()}`,
+      city: location.name,
+      temperature: Math.round(15 + Math.random() * 25), // 15-40°C
+      rainfall: Math.round((Math.random() * 5) * 10) / 10, // 0-5mm
+      wind: Math.round(5 + Math.random() * 35), // 5-40 km/h
+      comfort: Math.round(3 + Math.random() * 7), // 3-10
+      lat: location.lat,
+      lng: location.lng,
+      forecast: {
+        "2025-10-04": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+        "2025-10-05": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+        "2025-10-06": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+      }
+    };
+  };
+
+  // Get location data (either from predefined data or custom location)
+  const getLocationData = (locationId: string, customData: LocationData | null): LocationData | null => {
+    if (customData) return customData;
+    return allLocationsData.find((l) => l.id === locationId) || null;
+  };
+
+  const loc1 = getLocationData(location1, customLocation1);
+  const loc2 = getLocationData(location2, customLocation2);
+
+  // Auto-detect weather mode from selected date
+  useEffect(() => {
+    const weather1 = loc1?.forecast[selectedDate];
+    const weather2 = loc2?.forecast[selectedDate];
+    // Priority: if any city has rain/snow → show that
+    if (weather1 === "snow" || weather2 === "snow") setWeatherMode("snow");
+    else if (weather1 === "rain" || weather2 === "rain") setWeatherMode("rain");
+    else setWeatherMode("sunny");
+  }, [selectedDate, location1, location2, loc1?.forecast, loc2?.forecast]);
+
+  // Enhanced danger pop-up alerts with different severity levels
+  useEffect(() => {
+    const dangerAlerts: string[] = [];
+    const warningAlerts: string[] = [];
+    const infoAlerts: string[] = [];
+    
+    [loc1, loc2].filter(loc => loc !== null).forEach((loc) => {
+      // Extreme danger conditions
+      if (loc!.temperature >= 50) {
+        dangerAlerts.push(`🚨 EXTREME HEAT in ${loc!.city}: ${loc!.temperature}°C - Life threatening!`);
+      } else if (loc!.temperature >= 46) {
+        warningAlerts.push(`🔥 Heat Warning in ${loc!.city}: ${loc!.temperature}°C - Stay hydrated!`);
+      }
+      
+      if (loc!.rainfall >= 5.0) {
+        dangerAlerts.push(`🌊 FLOOD ALERT in ${loc!.city}: ${loc!.rainfall}mm - Seek higher ground!`);
+      } else if (loc!.rainfall >= 3) {
+        warningAlerts.push(`🌧️ Heavy Rain in ${loc!.city}: ${loc!.rainfall}mm - Flood risk`);
+      }
+      
+      if (loc!.wind >= 50) {
+        dangerAlerts.push(`💨 STORM WARNING in ${loc!.city}: ${loc!.wind}km/h - Stay indoors!`);
+      } else if (loc!.wind >= 20) {
+        warningAlerts.push(`🌪️ Strong Winds in ${loc!.city}: ${loc!.wind}km/h - Avoid outdoor activities`);
+      }
+      
+      if (loc!.comfort <= 3) {
+        infoAlerts.push(`😰 Poor comfort conditions in ${loc!.city}: ${loc!.comfort}/10`);
+      }
+    });
+
+    let message = "";
+    let type: "danger" | "warning" | "info" = "info";
+    
+    if (dangerAlerts.length > 0) {
+      message = dangerAlerts.join("\n");
+      type = "danger";
+    } else if (warningAlerts.length > 0) {
+      message = warningAlerts.join("\n");
+      type = "warning";
+    } else if (infoAlerts.length > 0) {
+      message = infoAlerts.join("\n");
+      type = "info";
+    }
+    
+    if (message) {
+      setAlertMessage(message);
+      setAlertType(type);
+      const timeout = setTimeout(() => setAlertMessage(null), 8000);
+      return () => clearTimeout(timeout);
+    } else {
+      setAlertMessage(null);
+    }
+  }, [loc1, loc2]);
+
+  // Comparison summary
+  const hotter = (loc1 && loc2) ? (loc1.temperature > loc2.temperature ? loc1.city : loc2.city) : "N/A";
+  const colder = (loc1 && loc2) ? (loc1.temperature < loc2.temperature ? loc1.city : loc2.city) : "N/A";
+  const wetter = (loc1 && loc2) ? (loc1.rainfall > loc2.rainfall ? loc1.city : loc2.city) : "N/A";
+  const windier = (loc1 && loc2) ? (loc1.wind > loc2.wind ? loc1.city : loc2.city) : "N/A";
+
+  const getAlertStyle = (type: "danger" | "warning" | "info") => {
+    switch (type) {
+      case "danger":
+        return "bg-red-600/95 border-red-500";
+      case "warning":
+        return "bg-orange-600/95 border-orange-500";
+      case "info":
+        return "bg-blue-600/95 border-blue-500";
+      default:
+        return "bg-red-600/95 border-red-500";
+    }
+  };
+
+  const isLocationDangerous = (loc: LocationData) => {
+    return loc.temperature >= 35 || loc.rainfall >= 2.5 || loc.wind >= 30 || loc.comfort <= 3;
+  };
+
+  return (
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white font-poppins overflow-hidden">
+      {/* Background Animation */}
+      {weatherMode === "rain" && (
+        <>
+          <div className="absolute inset-0 overflow-hidden z-0">
+            {[...Array(80)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-[2px] bg-gradient-to-b from-blue-300 to-blue-500 opacity-60 animate-rain rounded-full"
+                style={{
+                  height: `${20 + Math.random() * 15}px`,
+                  left: `${Math.random() * 100}%`,
+                  top: `${-Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 3}s`,
+                  animationDuration: `${0.8 + Math.random() * 0.4}s`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 via-transparent to-transparent z-0"></div>
+        </>
+      )}
+
+      {weatherMode === "snow" && (
+        <>
+          <div className="absolute inset-0 overflow-hidden z-0">
+            {[...Array(60)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute bg-white rounded-full opacity-80 animate-snow shadow-lg"
+                style={{
+                  width: `${4 + Math.random() * 8}px`,
+                  height: `${4 + Math.random() * 8}px`,
+                  left: `${Math.random() * 100}%`,
+                  top: `${-Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${4 + Math.random() * 4}s`,
+                }}
+              />
+            ))}
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-100/10 via-transparent to-transparent z-0"></div>
+        </>
+      )}
+
+      {weatherMode === "sunny" && (
+        <>
+          <div className="absolute top-10 right-10 w-24 h-24 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full animate-sunPulse shadow-2xl shadow-yellow-500/30 z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/15 via-orange-500/10 to-red-500/5 animate-sunGlow z-0"></div>
+          <div className="absolute inset-0 overflow-hidden z-0">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute w-1 h-1 bg-yellow-300 rounded-full opacity-40 animate-float"
+                style={{
+                  left: `${Math.random() * 100}%`,
+                  top: `${Math.random() * 100}%`,
+                  animationDelay: `${Math.random() * 5}s`,
+                  animationDuration: `${3 + Math.random() * 4}s`,
+                }}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Enhanced Pop-up Alert */}
+      {alertMessage && (
+        <div className={`fixed top-6 right-6 ${getAlertStyle(alertType)} text-white p-6 rounded-2xl shadow-2xl z-50 max-w-md animate-popIn border-2`}>
+          <div className="flex justify-between items-start">
+            <div>
+              <div className="flex items-center gap-3 font-bold text-lg mb-2">
+                <FiAlertTriangle className={`${alertType === 'danger' ? 'text-red-300 animate-bounce' : alertType === 'warning' ? 'text-orange-300' : 'text-blue-300'} text-xl`} />
+                {alertType === 'danger' ? 'DANGER ALERT' : alertType === 'warning' ? 'WARNING' : 'INFO'}
               </div>
-              <div style={metricStyle}>
-                <span style={metricTitleStyle}>Rainfall</span>
-                <img src={city.images[1]} alt="Rainfall" style={metricImgStyle} />
-                <span style={metricValueStyle}>{city.rainfall}</span>
+              <p className="text-sm whitespace-pre-line leading-relaxed">{alertMessage}</p>
+            </div>
+            <FiXCircle
+              className="cursor-pointer ml-4 hover:text-gray-300 transition-colors text-xl"
+              onClick={() => setAlertMessage(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div className="relative z-10 px-6 py-8">
+        <div className="max-w-7xl mx-auto">
+          <h1 className="text-6xl font-bold mb-12 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+            🌍 Compare Locations
+          </h1>
+
+          {/* Date Selection */}
+          <div className="text-center mb-8">
+            <div className="inline-block relative">
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="px-8 py-3 rounded-lg bg-black/30 backdrop-blur-sm text-white font-medium border border-blue-500/40 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 transition-all duration-300 shadow-lg shadow-black/20 hover:shadow-blue-500/20 hover:border-blue-400/60 cursor-pointer min-w-[200px]"
+                style={{
+                  colorScheme: 'dark',
+                  background: 'rgba(0, 0, 0, 0.3)',
+                  backdropFilter: 'blur(8px)',
+                }}
+              />
+              <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
+            </div>
+          </div>
+
+          {/* Map Toggle and Location Selection */}
+          <div className="text-center mb-8">
+            <button
+              onClick={() => setShowMap(!showMap)}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors duration-300 font-semibold flex items-center gap-2 mx-auto"
+            >
+              <FiMap /> {showMap ? 'Hide Map' : 'Select on Map'}
+            </button>
+          </div>
+
+          {/* Interactive Map */}
+          {showMap && (
+            <div className="mb-8">
+              {/* Two Map Instances */}
+              <div className="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
+                <InteractiveMap
+                  onLocationSelect={(location) => {
+                    setLocation1Data(location);
+                    const matchingLocation = allLocationsData.find(
+                      loc => Math.abs(loc.lat - location.lat) < 0.1 && Math.abs(loc.lng - location.lng) < 0.1
+                    );
+                    if (matchingLocation) {
+                      setLocation1(matchingLocation.id);
+                      setCustomLocation1(null); // Clear custom location
+                    } else {
+                      // Create custom weather data for selected location
+                      const customData = generateWeatherData(location);
+                      setCustomLocation1(customData);
+                      setLocation1(customData.id); // Use custom ID
+                    }
+                  }}
+                  title="Location 1"
+                  selectedLocation={location1Data}
+                  className="w-full"
+                />
+                <InteractiveMap
+                  onLocationSelect={(location) => {
+                    setLocation2Data(location);
+                    const matchingLocation = allLocationsData.find(
+                      loc => Math.abs(loc.lat - location.lat) < 0.1 && Math.abs(loc.lng - location.lng) < 0.1
+                    );
+                    if (matchingLocation) {
+                      setLocation2(matchingLocation.id);
+                      setCustomLocation2(null); // Clear custom location
+                    } else {
+                      // Create custom weather data for selected location
+                      const customData = generateWeatherData(location);
+                      setCustomLocation2(customData);
+                      setLocation2(customData.id); // Use custom ID
+                    }
+                  }}
+                  title="Location 2"
+                  selectedLocation={location2Data}
+                  className="w-full"
+                />
               </div>
-              <div style={metricStyle}>
-                <span style={metricTitleStyle}>Wind</span>
-                <img src={city.images[2]} alt="Wind" style={metricImgStyle} />
-                <span style={metricValueStyle}>{city.wind}</span>
+            </div>
+          )}
+
+          {/* Traditional Dropdowns (fallback) */}
+          {!showMap && (
+            <div className="flex flex-wrap justify-center gap-6 mb-12">
+              {[location1, location2].map((locValue, index) => (
+                <div key={index} className="relative">
+                  <FiSearch className="absolute left-4 top-4 text-blue-400 text-lg" />
+                  <select
+                    className="pl-12 pr-6 py-4 rounded-xl bg-white/10 backdrop-blur-xl text-white font-medium shadow-lg border-2 border-blue-400/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-300 transition-all duration-300 min-w-[200px]"
+                    value={locValue}
+                    onChange={(e) =>
+                      index === 0 ? setLocation1(e.target.value) : setLocation2(e.target.value)
+                    }
+                  >
+                    {allLocationsData.map((loc) => (
+                      <option
+                        key={loc.id}
+                        value={loc.id}
+                        disabled={loc.id === (index === 0 ? location2 : location1)}
+                        className="bg-gray-800 text-white"
+                      >
+                        {loc.city}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* City Weather Cards */}
+          <div className="flex flex-wrap justify-center gap-10 mb-12">
+            {[loc1, loc2].filter(data => data !== null).map((data) => (
+              <div
+                key={data!.id}
+                className={`bg-white/10 backdrop-blur-xl rounded-3xl p-8 w-96 h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
+                  isLocationDangerous(data!) 
+                    ? 'border-red-500/60 hover:border-red-400/80 shadow-red-500/20' 
+                    : 'border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20'
+                }`}
+              >
+                <h2 className={`text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r ${
+                  isLocationDangerous(data!) 
+                    ? 'from-red-300 to-orange-300' 
+                    : 'from-blue-300 to-cyan-300'
+                }`}>
+                  {data!.city}
+                  {isLocationDangerous(data!) && (
+                    <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
+                  )}
+                </h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <MetricTile 
+                    icon={<WiThermometer size={32} />} 
+                    title="Temperature" 
+                    value={`${data!.temperature}°C`}
+                    isAlert={data!.temperature >= 35}
+                  />
+                  <MetricTile 
+                    icon={<WiRaindrops size={32} />} 
+                    title="Rainfall" 
+                    value={`${data!.rainfall}mm`}
+                    isAlert={data!.rainfall >= 2.5}
+                  />
+                  <MetricTile 
+                    icon={<WiStrongWind size={32} />} 
+                    title="Wind" 
+                    value={`${data!.wind} km/h`}
+                    isAlert={data!.wind >= 30}
+                  />
+                  <MetricTile 
+                    icon={<WiDaySunny size={32} />} 
+                    title="Comfort" 
+                    value={`${data!.comfort}/10`}
+                    isAlert={data!.comfort <= 3}
+                  />
+                </div>
               </div>
-              <div style={metricStyle}>
-                <span style={metricTitleStyle}>Comfort Score</span>
-                <img src={city.images[3]} alt="Comfort" style={metricImgStyle} />
-                <span style={metricValueStyle}>{city.comfort}</span>
+            ))}
+          </div>
+
+          {/* Enhanced Summary */}
+          <div className="text-center bg-white/5 backdrop-blur-lg rounded-2xl p-8 max-w-4xl mx-auto border border-blue-400/30">
+            <h3 className="text-2xl font-bold mb-6 text-blue-300">📊 Comparison Summary</h3>
+            <div className="grid md:grid-cols-2 gap-6 text-lg">
+              <div className="space-y-3">
+                <p className="text-blue-200">🌡️ <b className="text-yellow-300">{hotter}</b> is hotter, <b className="text-cyan-300">{colder}</b> is colder</p>
+                <p className="text-blue-200">🌧️ More rainfall in <b className="text-blue-300">{wetter}</b></p>
+              </div>
+              <div className="space-y-3">
+                <p className="text-blue-200">💨 Windier conditions in <b className="text-gray-300">{windier}</b></p>
+                <p className="text-blue-200">📅 Weather forecast for <b className="text-purple-300">{selectedDate}</b></p>
               </div>
             </div>
           </div>
-        ))}
+        </div>
       </div>
+
+      {/* Enhanced Animations */}
+      <style>{`
+        @keyframes rain {
+          0% { 
+            transform: translateY(-20px) translateX(0px); 
+            opacity: 0; 
+          }
+          10% { opacity: 1; }
+          90% { opacity: 1; }
+          100% { 
+            transform: translateY(100vh) translateX(-20px); 
+            opacity: 0; 
+          }
+        }
+        .animate-rain {
+          animation: rain linear infinite;
+        }
+
+        @keyframes snow {
+          0% { 
+            transform: translateY(-20px) translateX(0px) rotate(0deg); 
+            opacity: 0.8; 
+          }
+          50% { 
+            opacity: 1; 
+            transform: translateY(50vh) translateX(10px) rotate(180deg); 
+          }
+          100% { 
+            transform: translateY(100vh) translateX(-10px) rotate(360deg); 
+            opacity: 0.6; 
+          }
+        }
+        .animate-snow {
+          animation: snow linear infinite;
+        }
+
+        @keyframes sunGlow {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.25; }
+        }
+        .animate-sunGlow {
+          animation: sunGlow 6s ease-in-out infinite;
+        }
+
+        @keyframes sunPulse {
+          0%, 100% { 
+            transform: scale(1); 
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.3);
+          }
+          50% { 
+            transform: scale(1.05); 
+            box-shadow: 0 0 50px rgba(251, 191, 36, 0.5);
+          }
+        }
+        .animate-sunPulse {
+          animation: sunPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+          0%, 100% { 
+            transform: translateY(0px) translateX(0px); 
+            opacity: 0.3; 
+          }
+          33% { 
+            transform: translateY(-10px) translateX(5px); 
+            opacity: 0.6; 
+          }
+          66% { 
+            transform: translateY(-5px) translateX(-5px); 
+            opacity: 0.4; 
+          }
+        }
+        .animate-float {
+          animation: float ease-in-out infinite;
+        }
+
+        @keyframes popIn {
+          from { transform: translateY(-20px) scale(0.8); opacity: 0; }
+          to { transform: translateY(0) scale(1); opacity: 1; }
+        }
+        .animate-popIn { 
+          animation: popIn 0.5s ease-out; 
+        }
+
+        /* Enhanced Dark Theme Calendar Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator {
+          background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%2360a5fa'%3e%3cpath fill-rule='evenodd' d='M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z' clip-rule='evenodd'/%3e%3c/svg%3e") no-repeat;
+          background-size: 18px 18px;
+          cursor: pointer;
+          filter: drop-shadow(0 0 3px rgba(96, 165, 250, 0.4));
+          padding: 3px;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+          background-color: rgba(96, 165, 250, 0.1);
+          transform: scale(1.05);
+        }
+
+        /* Dark theme for the calendar popup */
+        input[type="date"]::-webkit-datetime-edit {
+          color: white;
+          font-weight: 500;
+          letter-spacing: 0.3px;
+        }
+
+        input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+          background: transparent;
+        }
+
+        input[type="date"]::-webkit-datetime-edit-text,
+        input[type="date"]::-webkit-datetime-edit-month-field,
+        input[type="date"]::-webkit-datetime-edit-day-field,
+        input[type="date"]::-webkit-datetime-edit-year-field {
+          color: white;
+          background: transparent;
+          padding: 1px 3px;
+          border-radius: 4px;
+          transition: all 0.2s ease;
+        }
+
+        input[type="date"]::-webkit-datetime-edit-month-field:focus,
+        input[type="date"]::-webkit-datetime-edit-day-field:focus,
+        input[type="date"]::-webkit-datetime-edit-year-field:focus {
+          background: rgba(96, 165, 250, 0.15);
+          outline: none;
+          color: #93c5fd;
+        }
+
+        /* Calendar popup styling for webkit browsers */
+        input[type="date"]::-webkit-inner-spin-button,
+        input[type="date"]::-webkit-clear-button {
+          display: none;
+        }
+
+        /* Custom styles for calendar picker when opened */
+        @supports (-webkit-appearance: none) {
+          input[type="date"] {
+            position: relative;
+          }
+          
+          input[type="date"]:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            border-radius: 8px;
+            z-index: -1;
+            transition: all 0.3s ease;
+          }
+          
+          input[type="date"]:hover:before {
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 16px rgba(96, 165, 250, 0.15);
+          }
+          
+          input[type="date"]:focus:before {
+            background: rgba(0, 0, 0, 0.45);
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.5);
+          }
+        }
+
+        /* Firefox specific calendar styling */
+        @-moz-document url-prefix() {
+          input[type="date"] {
+            background: rgba(0, 0, 0, 0.3) !important;
+            color: white !important;
+            border: 1px solid rgba(96, 165, 250, 0.4) !important;
+            border-radius: 8px !important;
+          }
+        }
+
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+          .grid-cols-2 {
+            grid-template-columns: 1fr;
+          }
+          
+          input[type="date"] {
+            font-size: 16px;
+            padding: 12px 20px;
+          }
+        }
+      `}</style>
     </div>
   );
-}
+};
+
+export default CompareLocations;
