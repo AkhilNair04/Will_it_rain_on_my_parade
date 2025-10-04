@@ -8,7 +8,7 @@ class NasaDataService {
         const parameters = "T2M_MAX,RH2M,PRECTOTCORR,WS2M,PS,GWETROOT";
         const endDate = new Date();
         const startDate = new Date();
-        startDate.setFullYear(endDate.getFullYear() - 5); // Reduced to 5 years for faster processing
+        startDate.setFullYear(endDate.getFullYear() - 20); // Reduced to 5 years for faster processing
         const formatDate = (date) => `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
         
         const nasaUrl = `https://power.larc.nasa.gov/api/temporal/daily/point?parameters=${parameters}&community=RE&longitude=${lon}&latitude=${lat}&start=${formatDate(startDate)}&end=${formatDate(endDate)}&format=JSON`;
