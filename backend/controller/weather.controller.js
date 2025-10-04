@@ -56,7 +56,7 @@ export const predictWeather = async (req, res) => {
             input_location: { name: city || "Custom Location", latitude, longitude, forecast_date },
             model_details: {
                 training_data_source: "NASA POWER Project",
-                historical_data_range_years: 5,
+                historical_data_range_years: 20,
                 model_type: "Statistical Ridge Regression Analysis",
                 coefficients: modelInfo.coefficients,
                 intercept: modelInfo.intercept,
