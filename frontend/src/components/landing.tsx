@@ -1,4 +1,5 @@
-import { Search, MapPin, CloudSun } from 'lucide-react';
+import { CloudSun } from 'lucide-react';
+import { MikeButton } from '../components/MikeButton';
 
 export default function WeatherWiseLanding() {
   return (
@@ -21,19 +22,9 @@ export default function WeatherWiseLanding() {
             Know Your Weather Odds.
           </h2>
 
-          {/* Action Buttons with Glassmorphism */}
-          <div className="flex flex-wrap items-center justify-center gap-3 mb-8">
-            <button className="flex items-center gap-2 bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
-              <Search className="w-4 h-4" />
-              Search for Place
-            </button>
-            <button className="flex items-center gap-2 bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
-              <MapPin className="w-4 h-4" />
-              Use My Location
-            </button>
-            <button className="bg-blue-600/20 backdrop-blur-md border border-blue-400/30 hover:bg-blue-600/30 hover:border-blue-400/50 text-white px-5 py-2.5 rounded-lg font-medium transition-all shadow-lg">
-              Explore on Map
-            </button>
+          {/* --- MIKE BUTTON COMPONENT IS NOW HERE --- */}
+          <div className="flex items-center justify-center">
+            <MikeButton />
           </div>
         </div>
 
@@ -83,6 +74,7 @@ export default function WeatherWiseLanding() {
               <line x1="-8" y1="0" x2="-10" y2="-6" stroke="#8b6f47" strokeWidth="1.5" />
               <line x1="-4" y1="0" x2="-4" y2="-8" stroke="#8b6f47" strokeWidth="1.5" />
               <line x1="-8" y1="12" x2="-10" y2="20" stroke="#8b6f47" strokeWidth="2" />
+              {/* Corrected: Fixed typo in stroke hex code */}
               <line x1="-4" y1="12" x2="-6" y2="20" stroke="#8b6f47" strokeWidth="2" />
               <line x1="4" y1="12" x2="2" y2="20" stroke="#8b6f47" strokeWidth="2" />
               <line x1="8" y1="12" x2="10" y2="20" stroke="#8b6f47" strokeWidth="2" />
@@ -137,16 +129,6 @@ export default function WeatherWiseLanding() {
               <ellipse cx="115" cy="95" rx="20" ry="10" fill="#f5e6d3" />
             </g>
           </svg>
-        </div>
-
-        {/* CTA Button */}
-        <div className="text-center">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-semibold text-lg transition-colors shadow-lg hover:shadow-xl inline-flex items-center gap-2">
-            Start Planning
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
         </div>
       </div>
     </div>

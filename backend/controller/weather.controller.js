@@ -23,9 +23,10 @@ export const predictWeather = async (req, res) => {
         const { modelInfo, historicalAvgSoilWetness } = await NasaDataService.getHistoricalStats(latitude, longitude);
         console.log("✅ [WEATHER CONTROLLER] Historical data analysis completed.");
 
-        // --- Step 2: Get Live Forecast ---
-        console.log("🌤️ [WEATHER CONTROLLER] Step 2: Calling OpenWeatherMap Service...");
-        const liveForecast = await OpenWeatherMapService.getLiveForecast(latitude, longitude, start_hour, end_hour);
+    // --- Step 2: Get Live Forecast ---
+    console.log("🌤️ [WEATHER CONTROLLER] Step 2: Calling OpenWeatherMap Service...");
+    // Pass forecast_date (if provided) to ensure the service filters for the exact requested day
+    const liveForecast = await OpenWeatherMapService.getLiveForecast(latitude, longitude, start_hour, end_hour, forecast_date);
         console.log("✅ [WEATHER CONTROLLER] Live forecast received.");
 
         // --- Step 3: Make Prediction with Statistical Model ---
