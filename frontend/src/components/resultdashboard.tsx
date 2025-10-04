@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 export default function WeatherDashboard() {
-  //const [activeView, setActiveView] = useState('graph');
+   const [activeView, setActiveView] = useState('graph');
 
   // Add dark background to body
   React.useEffect(() => {
