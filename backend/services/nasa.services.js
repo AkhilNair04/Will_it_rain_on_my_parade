@@ -22,7 +22,7 @@ class NasaDataService {
     const parameters = "T2M_MAX,RH2M,PRECTOTCORR,WS2M,PS,GWETROOT";
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setFullYear(endDate.getFullYear() - 5);
+    startDate.setFullYear(endDate.getFullYear() - 20);
 
     console.log("📅 [NASA SERVICE] Date range:");
     console.log("   - Start date:", startDate.toISOString().split("T")[0]);
