@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   WiThermometer,
-  WiRaindrops,
+  WiRain,
   WiStrongWind,
   WiDaySunny,
 } from "react-icons/wi";
@@ -153,15 +153,15 @@ const MetricTile = ({
   value: string;
   isAlert?: boolean;
 }) => (
-  <div className={`bg-white/10 backdrop-blur-lg p-5 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 ${
+  <div className={`bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 min-h-[120px] ${
     isAlert ? 'border-red-500/60 bg-red-500/10 animate-pulse' : 'border-blue-400/30'
   }`}>
-    <div className="flex items-center gap-2 mb-2">
+    <div className="flex items-center gap-3 mb-4">
       {isAlert && <FiAlertTriangle className="text-red-400 animate-bounce" />}
       {icon}
-      <span className={`font-semibold text-sm ${isAlert ? 'text-red-300' : 'text-blue-300'}`}>{title}</span>
+      <span className={`font-bold text-xl ${isAlert ? 'text-red-300' : 'text-blue-300'}`}>{title}</span>
     </div>
-    <span className={`text-lg font-medium ${isAlert ? 'text-red-200' : 'text-white'}`}>{value}</span>
+    <span className={`text-2xl font-bold ${isAlert ? 'text-red-200' : 'text-white'}`}>{value}</span>
   </div>
 );
 
@@ -467,7 +467,7 @@ const CompareLocations: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white font-poppins overflow-hidden">
+    <div className="relative min-h-screen bg-gradient-to-br from-black via-blue-950 to-slate-900 text-white font-poppins overflow-hidden">
       {/* Background Animation */}
       {weatherMode === "rain" && (
         <>
@@ -486,7 +486,7 @@ const CompareLocations: React.FC = () => {
               />
             ))}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-900/20 via-transparent to-transparent z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-950/30 via-transparent to-transparent z-0"></div>
         </>
       )}
 
@@ -508,7 +508,7 @@ const CompareLocations: React.FC = () => {
               />
             ))}
           </div>
-          <div className="absolute inset-0 bg-gradient-to-t from-blue-100/10 via-transparent to-transparent z-0"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-blue-950/15 via-transparent to-transparent z-0"></div>
         </>
       )}
 
@@ -670,13 +670,13 @@ const CompareLocations: React.FC = () => {
             {[loc1, loc2].filter(data => data !== null).map((data) => (
               <div
                 key={data!.id}
-                className={`bg-white/10 backdrop-blur-xl rounded-3xl p-8 w-96 h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
+                className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
                   isLocationDangerous(data!) 
                     ? 'border-red-500/60 hover:border-red-400/80 shadow-red-500/20' 
                     : 'border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20'
                 }`}
               >
-                <h2 className={`text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r ${
+                <h2 className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
                   isLocationDangerous(data!) 
                     ? 'from-red-300 to-orange-300' 
                     : 'from-blue-300 to-cyan-300'
@@ -686,28 +686,28 @@ const CompareLocations: React.FC = () => {
                     <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
                   )}
                 </h2>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-8">
                   <MetricTile 
-                    icon={<WiThermometer size={32} />} 
-                    title="Temperature" 
+                    icon={<WiThermometer size={48} />} 
+                    title="🌡️ Temperature" 
                     value={`${data!.temperature}°C`}
                     isAlert={data!.temperature >= 35}
                   />
                   <MetricTile 
-                    icon={<WiRaindrops size={32} />} 
-                    title="Rainfall" 
+                    icon={<WiRain size={48} />} 
+                    title="💧 Rainfall" 
                     value={`${data!.rainfall}mm`}
                     isAlert={data!.rainfall >= 2.5}
                   />
                   <MetricTile 
-                    icon={<WiStrongWind size={32} />} 
-                    title="Wind" 
+                    icon={<WiStrongWind size={48} />} 
+                    title="💨 Wind" 
                     value={`${data!.wind} km/h`}
                     isAlert={data!.wind >= 30}
                   />
                   <MetricTile 
-                    icon={<WiDaySunny size={32} />} 
-                    title="Comfort" 
+                    icon={<WiDaySunny size={48} />} 
+                    title="😌 Comfort" 
                     value={`${data!.comfort}/10`}
                     isAlert={data!.comfort <= 3}
                   />
