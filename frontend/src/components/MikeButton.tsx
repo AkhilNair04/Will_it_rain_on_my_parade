@@ -5,15 +5,14 @@ import type { BackendPayload } from '../hooks/useVoiceProcessor';
 
 export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void }> = ({ onResult }) => {
   const { isListening, transcript, error, startListening } = useVoiceProcessor();
-  const [loading, setLoading] = useState(false);
   const [backendResponse, setBackendResponse] = useState<any | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
   const [voiceEnabled] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
 
   const postToBackend = async (payload: BackendPayload) => {
-    setLoading(true);
-    setBackendError(null);
-    setBackendResponse(null);
+  setBackendError(null);
+  setBackendResponse(null);
     try {
       const res = await fetch('http://localhost:5000/api/weather', {
         method: 'POST',
@@ -28,38 +27,56 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
       setBackendResponse(data);
     } catch (e: any) {
       setBackendError(e?.message ?? String(e));
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Build a human-friendly spoken summary from backend response
+  // Manual speak function (useful if automatic speech is blocked by browser policies)
+  const speakSummary = (resp = backendResponse) => {
+    if (!resp) return;
+    const utteranceText = buildSpokenSummary(resp);
+    if (!utteranceText) return;
+    try {
+      const synth = window.speechSynthesis;
+      if (!synth) return;
+      const utter = new SpeechSynthesisUtterance(utteranceText);
+      utter.lang = 'en-US';
+      utter.rate = 1;
+      utter.pitch = 1;
+      synth.cancel();
+      synth.speak(utter);
+    } catch (e) {
+      console.warn('Speech synth failed', e);
+    }
+  };
+
+  // Build a concise spoken summary using only the fields shown in the summary card
   const buildSpokenSummary = (resp: any) => {
     if (!resp) return '';
-    // If backend provides a human summary, prefer it
-    if (typeof resp.summary === 'string' && resp.summary.trim()) return resp.summary;
-    if (typeof resp.advice === 'string' && resp.advice.trim()) return resp.advice;
 
-    // If there's a probability_of_rain field, use it
-    if (typeof resp.probability_of_rain === 'number') {
-      const pct = Math.round(resp.probability_of_rain * 100);
-      const hours = resp.peak_hours ? `between ${resp.peak_hours.start} and ${resp.peak_hours.end}` : '';
-      return `There is a ${pct} percent chance of rain ${hours}. ${resp.city ? 'Location: ' + resp.city + '.' : ''}`.trim();
-    }
+    const loc = resp.input_location?.name || resp.city || '';
+    const date = resp.input_location?.forecast_date || resp.date || '';
+    const rainMm = resp.prediction_output?.predicted_rainfall_mm ?? resp.predicted_rainfall_mm;
+    const rainOutlook = resp.prediction_output?.rain_outlook ?? resp.rain_outlook;
+    const temp = resp.prediction_output?.temperature_outlook ?? resp.temperature_outlook;
+    const wind = resp.prediction_output?.wind_outlook ?? resp.wind_outlook;
+    const erosion = resp.prediction_output?.erosion_risk ?? resp.erosion_risk;
+    const pop = resp.live_forecast_values?.api_pop_percent ?? resp.api_pop_percent;
+    const finalSummary = resp.prediction_output?.final_summary || '';
 
-    // Fallback: stringify a few known fields
     const parts: string[] = [];
-    if (resp.city) parts.push(`Location ${resp.city}`);
-    if (resp.date) parts.push(`for ${resp.date}`);
-    if (resp.condition) parts.push(resp.condition);
-    if (parts.length) return parts.join(', ') + '.';
-
-    // Last resort: read the JSON's keys and short values
-    try {
-      return 'Weather update: ' + JSON.stringify(resp).slice(0, 400);
-    } catch {
-      return 'Weather update received.';
+    if (loc) parts.push(loc + (date ? ` on ${date}` : ''));
+    if (rainOutlook || rainMm != null) {
+      const mmText = rainMm != null ? `${rainMm} mm` : '';
+      parts.push(`${rainOutlook ?? ''}${mmText ? ' (' + mmText + ')' : ''}`.trim());
     }
+    if (finalSummary) parts.push(finalSummary);
+    if (temp) parts.push(`Temperature: ${temp}`);
+    if (wind) parts.push(`Wind: ${wind}`);
+    if (erosion) parts.push(`Erosion risk: ${erosion}`);
+    if (pop != null) parts.push(`POP ${pop}%`);
+
+    // Join into a short paragraph; do not read raw JSON
+    return parts.join('. ').replace(/\s+/g, ' ').trim();
   };
 
   // Speak backend response when it arrives (if enabled)
@@ -106,14 +123,72 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
       </button>
       {transcript && <p className="text-sm text-gray-300 mt-2">"{transcript}"</p>}
       {error && <p className="text-sm text-rose-400 mt-1">{error}</p>}
-      {loading && <p className="text-sm text-yellow-300 mt-2">Sending to backend...</p>}
+  {/* loading indicator intentionally removed per UX request */}
       {backendError && <p className="text-sm text-rose-400 mt-2">{backendError}</p>}
       {backendResponse && (
-        <pre className="text-xs text-gray-200 mt-2 p-2 bg-white/5 rounded max-w-full overflow-x-auto">
-          {JSON.stringify(backendResponse, null, 2)}
-        </pre>
+        <div className="w-full mt-3">
+          {/* Summary Card */}
+          <div className="bg-white/5 p-4 rounded-md shadow-sm text-left">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="text-white font-semibold">{backendResponse.input_location?.name || backendResponse.city || 'Location'}</h3>
+                <p className="text-sm text-gray-300">{backendResponse.input_location?.forecast_date || backendResponse.date || ''}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-lg text-white font-bold">{backendResponse.prediction_output?.predicted_rainfall_mm ?? backendResponse.predicted_rainfall_mm ?? '-'} mm</p>
+                <p className="text-sm text-gray-300">{backendResponse.prediction_output?.rain_outlook ?? backendResponse.rain_outlook ?? ''}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 text-sm text-gray-300">
+              <div>
+                <div className="font-medium text-white">Temp</div>
+                <div>{backendResponse.prediction_output?.temperature_outlook ?? backendResponse.temperature_outlook ?? '-'}</div>
+              </div>
+              <div>
+                <div className="font-medium text-white">Wind</div>
+                <div>{backendResponse.prediction_output?.wind_outlook ?? backendResponse.wind_outlook ?? '-'}</div>
+              </div>
+              <div>
+                <div className="font-medium text-white">Erosion Risk</div>
+                <div>{backendResponse.prediction_output?.erosion_risk ?? backendResponse.erosion_risk ?? '-'}</div>
+              </div>
+              <div>
+                <div className="font-medium text-white">POP</div>
+                <div>{backendResponse.live_forecast_values?.api_pop_percent ?? backendResponse.api_pop_percent ?? '-'}%</div>
+              </div>
+            </div>
+
+            {backendResponse.prediction_output?.final_summary && (
+              <p className="text-sm text-gray-200 mt-3">{backendResponse.prediction_output.final_summary}</p>
+            )}
+
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDetails((s) => !s)}
+                  className="text-sm text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1 rounded"
+                >
+                  {showDetails ? 'Hide details' : 'Show details'}
+                </button>
+                <button
+                  onClick={() => speakSummary()}
+                  className="text-sm text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1 rounded"
+                >
+                  Replay
+                </button>
+              </div>
+              <div className="text-xs text-gray-400">Updated from backend</div>
+            </div>
+          </div>
+
+          {showDetails && (
+            <pre className="text-xs text-gray-200 mt-2 p-2 bg-white/5 rounded max-w-full overflow-x-auto">
+              {JSON.stringify(backendResponse, null, 2)}
+            </pre>
+          )}
+        </div>
       )}
     </div>
   );
 };
-  
