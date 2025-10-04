@@ -2,16 +2,33 @@ import React, { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 
 interface WeatherData {
-  prediction_output?: {
-    predicted_rainfall_mm?: number;
-    confidence_score?: number;
+  input_location?: {
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    forecast_date?: string;
   };
-  nasa_data?: any;
-  openweather_data?: any;
+  model_details?: {
+    training_data_source?: string;
+    historical_data_range_years?: number;
+    model_type?: string;
+    coefficients?: Record<string, number>;
+    intercept?: number;
+    description?: string;
+  };
   live_forecast_values?: {
-    wind_speed_mps?: number;
     temperature_max_celsius?: number;
     humidity_percent?: number;
+    wind_speed_mps?: number;
+    api_pop_percent?: number;
+  };
+  prediction_output?: {
+    predicted_rainfall_mm?: number;
+    temperature_outlook?: string;
+    wind_outlook?: string;
+    rain_outlook?: string;
+    erosion_risk?: string;
+    final_summary?: string;
   };
 }
 
@@ -22,7 +39,6 @@ interface LocationData {
 }
 
 export default function WeatherDashboard() {
-  const [activeView, setActiveView] = useState("graph");
   const [searchParams] = useSearchParams();
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
@@ -69,27 +85,6 @@ export default function WeatherDashboard() {
       document.body.style.backgroundColor = "";
     };
   }, []);
-
-  // Sample data for charts
-  const tempData = [18, 17, 19, 22, 25, 26, 25, 24, 23, 21, 20, 19];
-  const humidityData = [85, 82, 88, 92, 90, 87, 85, 80, 75, 78, 83, 88];
-  const windData = [12, 14, 15, 18, 22, 20, 18, 16, 14];
-  const precipData = [0, 0, 0, 5, 9, 2, 1, 0, 8];
-
-  const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
 
   return (
     <div className="min-h-screen bg-slate-900 text-white p-6">
@@ -186,621 +181,213 @@ export default function WeatherDashboard() {
             </div>
           </div>
         </div>
-        {/* Title */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">
-            Detailed Climate View: New York
-          </h1>
+        {/* Weather Data Description */}
+        <div className="mb-8 mt-8">
+          <h1 className="text-3xl font-bold mb-2">Weather Analysis Report</h1>
           <p className="text-gray-400">
-            Comprehensive climate data for your selected location.
+            Detailed breakdown of the weather prediction data and model
+            analysis.
           </p>
         </div>
 
-        {/* Top Charts Grid - Temperature & Humidity */}
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          {/* Temperature Chart */}
-          <div className="bg-slate-800/50 rounded-2xl p-6">
-            <div className="mb-4">
-              <div className="flex gap-4 mb-4">
-                <button className="text-blue-400 font-semibold border-b-2 border-blue-400 pb-1">
-                  Daily
-                </button>
-                <button className="text-gray-400 hover:text-gray-300">
-                  Weekly
-                </button>
-                <button className="text-gray-400 hover:text-gray-300">
-                  Monthly
-                </button>
-              </div>
-              <h3 className="text-lg font-semibold text-gray-300">
-                Temperature (°C)
+        {/* Prediction Output */}
+        <div className="bg-slate-800/50 rounded-2xl p-6">
+          <h2 className="text-2xl font-bold mb-4 text-yellow-400">
+            Weather Prediction
+          </h2>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">
+                Forecast Details
               </h3>
+              <div className="space-y-3">
+                <div className="bg-slate-700/30 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Predicted Rainfall:</span>
+                    <span className="text-xl font-bold text-blue-400">
+                      {weatherData?.prediction_output?.predicted_rainfall_mm?.toFixed(
+                        1
+                      ) || "N/A"}{" "}
+                      mm
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-slate-700/30 rounded-lg p-3 text-center">
+                    <div className="text-orange-400 font-semibold">
+                      {weatherData?.prediction_output?.temperature_outlook ||
+                        "N/A"}
+                    </div>
+                    <div className="text-gray-400 text-xs">Temperature</div>
+                  </div>
+
+                  <div className="bg-slate-700/30 rounded-lg p-3 text-center">
+                    <div className="text-cyan-400 font-semibold">
+                      {weatherData?.prediction_output?.wind_outlook || "N/A"}
+                    </div>
+                    <div className="text-gray-400 text-xs">Wind</div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-700/30 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Rain Outlook:</span>
+                    <span className="text-blue-400 font-semibold">
+                      {weatherData?.prediction_output?.rain_outlook || "N/A"}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-700/30 rounded-lg p-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-400">Erosion Risk:</span>
+                    <span
+                      className={`font-semibold ${
+                        weatherData?.prediction_output?.erosion_risk?.toLowerCase() ===
+                        "low"
+                          ? "text-green-400"
+                          : weatherData?.prediction_output?.erosion_risk?.toLowerCase() ===
+                            "medium"
+                          ? "text-yellow-400"
+                          : "text-red-400"
+                      }`}
+                    >
+                      {weatherData?.prediction_output?.erosion_risk || "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <svg viewBox="0 0 400 180" className="w-full">
-              <defs>
-                <linearGradient
-                  id="tempGradient2"
-                  x1="0%"
-                  y1="0%"
-                  x2="0%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
+            <div>
+              <h3 className="text-lg font-semibold mb-3 text-gray-300">
+                Summary
+              </h3>
+              <div className="bg-gradient-to-r from-slate-700/40 to-slate-600/40 rounded-lg p-4">
+                <p className="text-gray-200 leading-relaxed">
+                  {weatherData?.prediction_output?.final_summary ||
+                    "Weather prediction analysis is being processed..."}
+                </p>
+              </div>
 
-              {/* Grid */}
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <line
-                  key={i}
-                  x1="30"
-                  y1={30 + i * 25}
-                  x2="380"
-                  y2={30 + i * 25}
-                  stroke="#334155"
-                  strokeWidth="0.5"
-                />
-              ))}
-
-              {/* Y-axis labels */}
-              <text x="15" y="35" fill="#94a3b8" fontSize="10">
-                26
-              </text>
-              <text x="15" y="60" fill="#94a3b8" fontSize="10">
-                24
-              </text>
-              <text x="15" y="85" fill="#94a3b8" fontSize="10">
-                22
-              </text>
-              <text x="15" y="110" fill="#94a3b8" fontSize="10">
-                20
-              </text>
-              <text x="15" y="135" fill="#94a3b8" fontSize="10">
-                18
-              </text>
-              <text x="15" y="160" fill="#94a3b8" fontSize="10">
-                16
-              </text>
-
-              {/* Area fill */}
-              <path
-                d={`M 30,${150 - (tempData[0] - 16) * 5} ${tempData
-                  .map((t, i) => `L ${30 + i * 30},${150 - (t - 16) * 5}`)
-                  .join(" ")} L ${
-                  30 + (tempData.length - 1) * 30
-                },150 L 30,150 Z`}
-                fill="url(#tempGradient2)"
-              />
-
-              {/* Line */}
-              <path
-                d={`M 30,${150 - (tempData[0] - 16) * 5} ${tempData
-                  .map((t, i) => `L ${30 + i * 30},${150 - (t - 16) * 5}`)
-                  .join(" ")}`}
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2"
-              />
-
-              {/* X-axis labels */}
-              {["12am", "3am", "6am", "9am", "12pm", "3pm", "6pm", "9pm"].map(
-                (label, i) => (
-                  <text
-                    key={i}
-                    x={30 + i * 45}
-                    y="175"
-                    fill="#94a3b8"
-                    fontSize="10"
-                    textAnchor="middle"
-                  >
-                    {label}
-                  </text>
-                )
-              )}
-            </svg>
-          </div>
-
-          {/* Humidity Chart */}
-          <div className="bg-slate-800/50 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">
-              Humidity (%)
-            </h3>
-
-            <svg viewBox="0 0 400 180" className="w-full">
-              <defs>
-                <linearGradient
-                  id="humidityGradient"
-                  x1="0%"
-                  y1="0%"
-                  x2="0%"
-                  y2="100%"
-                >
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-                  <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid */}
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <line
-                  key={i}
-                  x1="30"
-                  y1={30 + i * 25}
-                  x2="380"
-                  y2={30 + i * 25}
-                  stroke="#334155"
-                  strokeWidth="0.5"
-                />
-              ))}
-
-              {/* Y-axis labels */}
-              <text x="10" y="35" fill="#94a3b8" fontSize="10">
-                100
-              </text>
-              <text x="15" y="60" fill="#94a3b8" fontSize="10">
-                95
-              </text>
-              <text x="15" y="85" fill="#94a3b8" fontSize="10">
-                90
-              </text>
-              <text x="15" y="110" fill="#94a3b8" fontSize="10">
-                85
-              </text>
-              <text x="15" y="135" fill="#94a3b8" fontSize="10">
-                80
-              </text>
-              <text x="15" y="160" fill="#94a3b8" fontSize="10">
-                75
-              </text>
-
-              {/* Area fill */}
-              <path
-                d={`M 30,${180 - (humidityData[0] - 70) * 5} ${humidityData
-                  .map((h, i) => `L ${30 + i * 30},${180 - (h - 70) * 5}`)
-                  .join(" ")} L ${
-                  30 + (humidityData.length - 1) * 30
-                },150 L 30,150 Z`}
-                fill="url(#humidityGradient)"
-              />
-
-              {/* Line */}
-              <path
-                d={`M 30,${180 - (humidityData[0] - 70) * 5} ${humidityData
-                  .map((h, i) => `L ${30 + i * 30},${180 - (h - 70) * 5}`)
-                  .join(" ")}`}
-                fill="none"
-                stroke="#8b5cf6"
-                strokeWidth="2"
-              />
-
-              {/* X-axis labels */}
-              {["12am", "3am", "6am", "9am", "12pm", "3pm", "6pm", "9pm"].map(
-                (label, i) => (
-                  <text
-                    key={i}
-                    x={30 + i * 45}
-                    y="175"
-                    fill="#94a3b8"
-                    fontSize="10"
-                    textAnchor="middle"
-                  >
-                    {label}
-                  </text>
-                )
-              )}
-            </svg>
+              <div className="mt-4 p-3 bg-slate-700/20 rounded-lg">
+                <h4 className="text-sm font-semibold text-gray-300 mb-2">
+                  Location Information
+                </h4>
+                <div className="text-sm space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Location:</span>
+                    <span className="text-white">
+                      {weatherData?.input_location?.name ||
+                        locationData?.city ||
+                        "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Coordinates:</span>
+                    <span className="text-white">
+                      {weatherData?.input_location?.latitude?.toFixed(4) ||
+                        locationData?.latitude?.toFixed(4) ||
+                        "N/A"}
+                      ,{" "}
+                      {weatherData?.input_location?.longitude?.toFixed(4) ||
+                        locationData?.longitude?.toFixed(4) ||
+                        "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Forecast Date:</span>
+                    <span className="text-white">
+                      {weatherData?.input_location?.forecast_date ||
+                        forecastDate ||
+                        "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Bottom Charts Grid - Wind Speed & Precipitation */}
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
-          {/* Wind Speed Chart */}
+        {/* Weather Data Sections */}
+        <div className="space-y-6 mt-10">
+          {/* Model Details */}
           <div className="bg-slate-800/50 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">
-              Wind Speed (km/h)
-            </h3>
-
-            <svg viewBox="0 0 400 180" className="w-full">
-              {/* Grid */}
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <line
-                  key={i}
-                  x1="30"
-                  y1={30 + i * 25}
-                  x2="380"
-                  y2={30 + i * 25}
-                  stroke="#334155"
-                  strokeWidth="0.5"
-                />
-              ))}
-
-              {/* Y-axis labels */}
-              <text x="15" y="35" fill="#94a3b8" fontSize="10">
-                24
-              </text>
-              <text x="15" y="60" fill="#94a3b8" fontSize="10">
-                20
-              </text>
-              <text x="15" y="85" fill="#94a3b8" fontSize="10">
-                16
-              </text>
-              <text x="15" y="110" fill="#94a3b8" fontSize="10">
-                12
-              </text>
-              <text x="15" y="135" fill="#94a3b8" fontSize="10">
-                8
-              </text>
-              <text x="15" y="160" fill="#94a3b8" fontSize="10">
-                4
-              </text>
-
-              {/* Bars */}
-              {windData.map((speed, i) => (
-                <rect
-                  key={i}
-                  x={50 + i * 35}
-                  y={150 - speed * 5}
-                  width="25"
-                  height={speed * 5}
-                  fill="#10b981"
-                  rx="2"
-                />
-              ))}
-
-              {/* X-axis labels */}
-              {[
-                "12am",
-                "3am",
-                "6am",
-                "9am",
-                "12pm",
-                "3pm",
-                "6pm",
-                "9pm",
-                "12am",
-              ].map((label, i) => (
-                <text
-                  key={i}
-                  x={55 + i * 35}
-                  y="175"
-                  fill="#94a3b8"
-                  fontSize="10"
-                  textAnchor="middle"
-                >
-                  {label}
-                </text>
-              ))}
-            </svg>
-          </div>
-
-          {/* Precipitation Chart */}
-          <div className="bg-slate-800/50 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-gray-300 mb-4">
-              Precipitation (mm)
-            </h3>
-
-            <svg viewBox="0 0 400 180" className="w-full">
-              {/* Grid */}
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <line
-                  key={i}
-                  x1="30"
-                  y1={30 + i * 25}
-                  x2="380"
-                  y2={30 + i * 25}
-                  stroke="#334155"
-                  strokeWidth="0.5"
-                />
-              ))}
-
-              {/* Y-axis labels */}
-              <text x="15" y="35" fill="#94a3b8" fontSize="10">
-                10
-              </text>
-              <text x="20" y="60" fill="#94a3b8" fontSize="10">
-                9
-              </text>
-              <text x="20" y="85" fill="#94a3b8" fontSize="10">
-                7
-              </text>
-              <text x="20" y="110" fill="#94a3b8" fontSize="10">
-                5
-              </text>
-              <text x="20" y="135" fill="#94a3b8" fontSize="10">
-                3
-              </text>
-              <text x="20" y="160" fill="#94a3b8" fontSize="10">
-                1
-              </text>
-
-              {/* Bars */}
-              {precipData.map((precip, i) => (
-                <rect
-                  key={i}
-                  x={50 + i * 35}
-                  y={150 - precip * 12}
-                  width="25"
-                  height={precip * 12}
-                  fill="#3b82f6"
-                  rx="2"
-                />
-              ))}
-
-              {/* X-axis labels */}
-              {[
-                "12am",
-                "3am",
-                "6am",
-                "9am",
-                "12pm",
-                "3pm",
-                "6pm",
-                "9pm",
-                "12am",
-              ].map((label, i) => (
-                <text
-                  key={i}
-                  x={55 + i * 35}
-                  y="175"
-                  fill="#94a3b8"
-                  fontSize="10"
-                  textAnchor="middle"
-                >
-                  {label}
-                </text>
-              ))}
-            </svg>
-          </div>
-        </div>
-
-        {/* Compare Locations Section */}
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2">Compare Locations</h2>
-          <p className="text-gray-400 mb-6">
-            Visually compare climate data between two locations.
-          </p>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Temperature Comparison */}
-            <div className="bg-slate-800/50 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-gray-300 mb-4">
-                Temperature Comparison
-              </h3>
-
-              <div className="flex gap-4 mb-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span>New York</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                  <span>Japan</span>
+            <h2 className="text-2xl font-bold mb-4 text-blue-400">
+              Model Information
+            </h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-300">
+                  Training Details
+                </h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Data Source:</span>
+                    <span className="text-white">
+                      {weatherData?.model_details?.training_data_source ||
+                        "NASA POWER Project"}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Historical Range:</span>
+                    <span className="text-white">
+                      {weatherData?.model_details
+                        ?.historical_data_range_years || 5}{" "}
+                      years
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">Model Type:</span>
+                    <span className="text-white">
+                      {weatherData?.model_details?.model_type ||
+                        "Statistical Ridge Regression"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              <svg viewBox="0 0 200 150" className="w-full">
-                {/* Grid */}
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <line
-                    key={i}
-                    x1="25"
-                    y1={20 + i * 25}
-                    x2="180"
-                    y2={20 + i * 25}
-                    stroke="#334155"
-                    strokeWidth="0.5"
-                  />
-                ))}
-
-                {/* Y-axis labels */}
-                <text x="10" y="25" fill="#94a3b8" fontSize="9">
-                  26
-                </text>
-                <text x="10" y="50" fill="#94a3b8" fontSize="9">
-                  20
-                </text>
-                <text x="10" y="75" fill="#94a3b8" fontSize="9">
-                  14
-                </text>
-                <text x="10" y="100" fill="#94a3b8" fontSize="9">
-                  8
-                </text>
-                <text x="10" y="125" fill="#94a3b8" fontSize="9">
-                  2
-                </text>
-
-                {/* New York line */}
-                <path
-                  d="M 30,110 Q 60,80 90,50 Q 120,30 150,40 Q 165,45 170,35"
-                  fill="none"
-                  stroke="#3b82f6"
-                  strokeWidth="2"
-                />
-
-                {/* Japan line */}
-                <path
-                  d="M 30,120 Q 60,100 90,70 Q 120,45 150,55 Q 165,60 170,50"
-                  fill="none"
-                  stroke="#f97316"
-                  strokeWidth="2"
-                />
-
-                {/* X-axis labels */}
-                {["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((label, i) => (
-                  <text
-                    key={i}
-                    x={30 + i * 28}
-                    y="145"
-                    fill="#94a3b8"
-                    fontSize="9"
-                    textAnchor="middle"
-                  >
-                    {label}
-                  </text>
-                ))}
-              </svg>
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-300">
+                  Model Coefficients
+                </h3>
+                <div className="space-y-2 text-sm">
+                  {weatherData?.model_details?.coefficients ? (
+                    Object.entries(weatherData.model_details.coefficients).map(
+                      ([key, value]) => (
+                        <div key={key} className="flex justify-between">
+                          <span className="text-gray-400">{key}:</span>
+                          <span className="text-white">
+                            {typeof value === "number"
+                              ? value.toFixed(3)
+                              : String(value)}
+                          </span>
+                        </div>
+                      )
+                    )
+                  ) : (
+                    <div className="text-gray-400">
+                      No coefficient data available
+                    </div>
+                  )}
+                  <div className="flex justify-between border-t border-gray-600 pt-2">
+                    <span className="text-gray-400">Intercept:</span>
+                    <span className="text-white">
+                      {weatherData?.model_details?.intercept?.toFixed(3) ||
+                        "N/A"}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Rainfall Comparison */}
-            <div className="bg-slate-800/50 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-gray-300 mb-4">
-                Rainfall Comparison
-              </h3>
-
-              <div className="flex gap-4 mb-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span>New York</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                  <span>Japan</span>
-                </div>
-              </div>
-
-              <svg viewBox="0 0 200 150" className="w-full">
-                {/* Grid */}
-                {[0, 1, 2, 3, 4].map((i) => (
-                  <line
-                    key={i}
-                    x1="25"
-                    y1={20 + i * 25}
-                    x2="180"
-                    y2={20 + i * 25}
-                    stroke="#334155"
-                    strokeWidth="0.5"
-                  />
-                ))}
-
-                {/* Y-axis labels */}
-                <text x="5" y="25" fill="#94a3b8" fontSize="9">
-                  100
-                </text>
-                <text x="10" y="50" fill="#94a3b8" fontSize="9">
-                  80
-                </text>
-                <text x="10" y="75" fill="#94a3b8" fontSize="9">
-                  60
-                </text>
-                <text x="10" y="100" fill="#94a3b8" fontSize="9">
-                  40
-                </text>
-                <text x="10" y="125" fill="#94a3b8" fontSize="9">
-                  20
-                </text>
-
-                {/* Bars */}
-                {[40, 50, 70, 90, 100, 85].map((val, i) => (
-                  <g key={i}>
-                    <rect
-                      x={30 + i * 24}
-                      y={120 - val * 0.9}
-                      width="8"
-                      height={val * 0.9}
-                      fill="#f97316"
-                      rx="1"
-                    />
-                    <rect
-                      x={38 + i * 24}
-                      y={120 - val * 0.7}
-                      width="8"
-                      height={val * 0.7}
-                      fill="#3b82f6"
-                      rx="1"
-                    />
-                  </g>
-                ))}
-
-                {/* X-axis labels */}
-                {["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((label, i) => (
-                  <text
-                    key={i}
-                    x={34 + i * 24}
-                    y="145"
-                    fill="#94a3b8"
-                    fontSize="9"
-                    textAnchor="middle"
-                  >
-                    {label}
-                  </text>
-                ))}
-              </svg>
-            </div>
-
-            {/* Comfort Index */}
-            <div className="bg-slate-800/50 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-gray-300 mb-4">
-                Comfort Index
-              </h3>
-
-              <div className="flex gap-4 mb-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded"></div>
-                  <span>New York</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
-                  <span>Japan</span>
-                </div>
-              </div>
-
-              <svg viewBox="0 0 200 150" className="w-full">
-                {/* Grid circles */}
-                {[1, 0.8, 0.6, 0.4, 0.2].map((r, i) => (
-                  <circle
-                    key={i}
-                    cx="100"
-                    cy="75"
-                    r={50 * r}
-                    fill="none"
-                    stroke="#334155"
-                    strokeWidth="0.5"
-                  />
-                ))}
-
-                {/* Radar chart - New York (blue) */}
-                <path
-                  d="M 100,30 L 135,50 L 140,85 L 120,110 L 75,110 L 60,75 Z"
-                  fill="#3b82f6"
-                  fillOpacity="0.3"
-                  stroke="#3b82f6"
-                  strokeWidth="2"
-                />
-
-                {/* Radar chart - Japan (orange) */}
-                <path
-                  d="M 100,45 L 125,60 L 130,80 L 115,100 L 85,100 L 70,80 Z"
-                  fill="#f97316"
-                  fillOpacity="0.3"
-                  stroke="#f97316"
-                  strokeWidth="2"
-                />
-
-                {/* Labels */}
-                <text
-                  x="100"
-                  y="20"
-                  fill="#94a3b8"
-                  fontSize="9"
-                  textAnchor="middle"
-                >
-                  Temp
-                </text>
-                <text x="145" y="50" fill="#94a3b8" fontSize="9">
-                  Humidity
-                </text>
-                <text x="145" y="90" fill="#94a3b8" fontSize="9">
-                  Wind
-                </text>
-                <text x="120" y="120" fill="#94a3b8" fontSize="9">
-                  Sun
-                </text>
-                <text x="65" y="120" fill="#94a3b8" fontSize="9">
-                  Precip
-                </text>
-              </svg>
+            <div className="mt-4 p-4 bg-slate-700/30 rounded-lg">
+              <p className="text-gray-300 text-sm">
+                <strong>Model Description:</strong>{" "}
+                {weatherData?.model_details?.description ||
+                  "Uses historical weather patterns and statistical relationships for rainfall prediction"}
+              </p>
             </div>
           </div>
         </div>

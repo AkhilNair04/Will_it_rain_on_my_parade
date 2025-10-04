@@ -5,11 +5,14 @@ import WorldMap from "../components/worldmap"; // Import the new WorldMap compon
 
 export default function WeatherWise() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState<number>(14);
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState<number>(today.getDate());
   const [selectedFilters, setSelectedFilters] = useState<string[]>([
     "Very Wet",
   ]);
-  const [currentMonth, setCurrentMonth] = useState<Date>(new Date(2024, 6)); // July 2024
+  const [currentMonth, setCurrentMonth] = useState<Date>(
+    new Date(today.getFullYear(), today.getMonth())
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Location state
