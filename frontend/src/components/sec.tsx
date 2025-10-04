@@ -1,14 +1,28 @@
 import React, { useState } from "react";
 import { CloudRain, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import WorldMap from "../components/worldmap"; // Import the new WorldMap component
 
 export default function WeatherWise() {
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState<number>(14);
   const [selectedFilters, setSelectedFilters] = useState<string[]>([
     "Very Wet",
   ]);
   const [currentMonth, setCurrentMonth] = useState<Date>(new Date(2024, 6)); // July 2024
   const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Location state
+  const [locationData, setLocationData] = useState<{
+    city: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+
+  // Weather API state
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [weatherData, setWeatherData] = useState<any>(null);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
 
   // Create a full date object from state for display
   const fullSelectedDate = new Date(
@@ -38,6 +52,20 @@ export default function WeatherWise() {
     );
   };
 
+  // Handle location updates from WorldMap component
+  const handleLocationUpdate = (
+    city: string,
+    latitude: number,
+    longitude: number
+  ) => {
+    setLocationData({ city, latitude, longitude });
+    console.log("📍 [LOCATION UPDATE] Location updated:", {
+      city,
+      latitude,
+      longitude,
+    });
+  };
+
   const getDaysInMonth = (
     date: Date
   ): { firstDay: number; daysInMonth: number } => {
@@ -46,6 +74,86 @@ export default function WeatherWise() {
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     return { firstDay, daysInMonth };
+  };
+
+  // Function to get weather probability
+  const getWeatherProbability = async () => {
+    if (!locationData) {
+      alert("Please select a location on the map first!");
+      console.log("❌ [WEATHER API] No location selected");
+      return;
+    }
+
+    setWeatherLoading(true);
+    setWeatherError(null);
+
+    try {
+      // Format the selected date to YYYY-MM-DD
+      const selectedFullDate = new Date(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth(),
+        selectedDate
+      );
+      const forecastDate = selectedFullDate.toISOString().split("T")[0];
+
+      // Default time range (can be made configurable later)
+      const start_hour = 7; // 7 AM
+      const end_hour = 19; // 7 PM
+
+      const requestData = {
+        city: locationData.city,
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        forecast_date: forecastDate,
+        start_hour,
+        end_hour,
+      };
+
+      console.log("🌤️ [WEATHER API] Making weather request:");
+      console.log("   - Request data:", requestData);
+
+      const response = await fetch("http://localhost:5000/api/weather/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestData),
+      });
+
+      console.log("📡 [WEATHER API] Response status:", response.status);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setWeatherData(data);
+      setWeatherLoading(false);
+
+      console.log("✅ [WEATHER API] Weather data received:");
+      console.log(data);
+
+      // Navigate to the result dashboard with weather data as URL parameters
+      const queryParams = new URLSearchParams({
+        weatherData: JSON.stringify(data),
+        location: JSON.stringify(locationData),
+        date: forecastDate,
+      });
+
+      navigate(`/dashboardresult?${queryParams.toString()}`);
+
+      console.log("🧭 [NAVIGATION] Redirecting to dashboard with weather data");
+    } catch (error) {
+      setWeatherLoading(false);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      setWeatherError(errorMessage);
+
+      console.error("❌ [WEATHER API] Error:", errorMessage);
+      console.error("❌ [WEATHER API] Full error:", error);
+
+      alert(`Error fetching weather data: ${errorMessage}`);
+    }
   };
 
   const { firstDay, daysInMonth } = getDaysInMonth(currentMonth);
@@ -210,7 +318,7 @@ export default function WeatherWise() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Map Section is now cleaner and uses the dedicated component */}
-          <WorldMap />
+          <WorldMap onLocationUpdate={handleLocationUpdate} />
 
           {/* Calendar */}
           <div className="bg-gray-800/30 rounded-2xl p-6 border border-gray-700">
@@ -300,30 +408,36 @@ export default function WeatherWise() {
           </div>
         </div>
 
-        <div className="mb-8">
-          <h3 className="text-lg font-semibold mb-4">
-            Weather Condition Filters
-          </h3>
-          <div className="flex flex-wrap gap-3">
-            {filters.map((filter) => (
-              <button
-                key={filter}
-                onClick={() => toggleFilter(filter)}
-                className={`px-5 py-2.5 rounded-full text-sm font-medium transition ${
-                  selectedFilters.includes(filter)
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex justify-center">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3.5 rounded-xl transition shadow-lg shadow-blue-600/30">
-            Get Weather Probability
+        <div className="flex flex-col items-center gap-4">
+          <button
+            onClick={getWeatherProbability}
+            disabled={weatherLoading}
+            className={`font-semibold px-8 py-3.5 rounded-xl transition shadow-lg ${
+              weatherLoading
+                ? "bg-gray-600 cursor-not-allowed text-gray-300"
+                : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/30 hover:scale-105"
+            }`}
+          >
+            {weatherLoading
+              ? "Getting Weather Data..."
+              : "Get Weather Probability"}
           </button>
+
+          {/* Location indicator */}
+          {locationData && (
+            <p className="text-sm text-green-400">
+              📍 Location: {locationData.city} (
+              {locationData.latitude.toFixed(4)},{" "}
+              {locationData.longitude.toFixed(4)})
+            </p>
+          )}
+
+          {/* Error display */}
+          {weatherError && (
+            <p className="text-sm text-red-400 max-w-md text-center">
+              ❌ Error: {weatherError}
+            </p>
+          )}
         </div>
       </main>
 
