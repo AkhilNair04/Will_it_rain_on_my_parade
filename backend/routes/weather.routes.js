@@ -1,10 +1,9 @@
 import { Router } from "express";
+import { weatherCheck } from "../controller/weather.controller.js";
 // import { weatherCheck } from "../controllers/weather.controller.js";
 
 const router= Router();
 
-router.get("/",(req,res)=>{
-    res.send("Weather route is working!");
-});
+router.get("/",weatherCheck);
 
 export default router;
