@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { Share2 } from "lucide-react";
 
 interface WeatherData {
   input_location?: {
@@ -40,6 +41,7 @@ interface LocationData {
 
 export default function WeatherDashboard() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [forecastDate, setForecastDate] = useState<string>("");
@@ -77,6 +79,19 @@ export default function WeatherDashboard() {
       console.log("✅ [DASHBOARD] Forecast date loaded:", dateParam);
     }
   }, [searchParams]);
+
+  // Function to handle export and share navigation
+  const handleExportShare = () => {
+    // Pass current weather data to export page via URL parameters
+    const queryParams = new URLSearchParams({
+      weatherData: JSON.stringify(weatherData),
+      location: JSON.stringify(locationData),
+      date: forecastDate,
+    });
+
+    navigate(`/export?${queryParams.toString()}`);
+    console.log("🔗 [NAVIGATION] Redirecting to export page with weather data");
+  };
 
   // Add dark background to body
   React.useEffect(() => {
@@ -334,7 +349,7 @@ export default function WeatherDashboard() {
                     <span className="text-gray-400">Historical Range:</span>
                     <span className="text-white">
                       {weatherData?.model_details
-                        ?.historical_data_range_years || 5}{" "}
+                        ?.historical_data_range_years || 20}{" "}
                       years
                     </span>
                   </div>
@@ -390,6 +405,17 @@ export default function WeatherDashboard() {
               </p>
             </div>
           </div>
+        </div>
+
+        {/* Export Button */}
+        <div className="mt-8 flex justify-center">
+          <button
+            onClick={handleExportShare}
+            className="flex items-center gap-3 bg-green-600 hover:bg-green-700 text-white font-semibold px-8 py-4 rounded-xl transition-all shadow-lg hover:shadow-green-600/30 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-slate-900"
+          >
+            <Share2 className="w-5 h-5" />
+            Export & Share
+          </button>
         </div>
       </div>
     </div>

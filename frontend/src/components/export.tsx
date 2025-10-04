@@ -1,37 +1,395 @@
-import React from 'react';
-import { Settings, FileText, Download, Code, Eye, Share2 } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
+import {
+  Settings,
+  FileText,
+  Download,
+  Code,
+  MessageCircle,
+  Copy,
+} from "lucide-react";
+
+interface WeatherData {
+  input_location?: {
+    name?: string;
+    latitude?: number;
+    longitude?: number;
+    forecast_date?: string;
+  };
+  model_details?: {
+    training_data_source?: string;
+    historical_data_range_years?: number;
+    model_type?: string;
+    coefficients?: Record<string, number>;
+    intercept?: number;
+    description?: string;
+  };
+  live_forecast_values?: {
+    temperature_max_celsius?: number;
+    humidity_percent?: number;
+    wind_speed_mps?: number;
+    api_pop_percent?: number;
+  };
+  prediction_output?: {
+    predicted_rainfall_mm?: number;
+    temperature_outlook?: string;
+    wind_outlook?: string;
+    rain_outlook?: string;
+    erosion_risk?: string;
+    final_summary?: string;
+  };
+}
+
+interface LocationData {
+  city: string;
+  latitude: number;
+  longitude: number;
+}
 
 export default function ExportShare() {
+  const [searchParams] = useSearchParams();
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [locationData, setLocationData] = useState<LocationData | null>(null);
+  const [forecastDate, setForecastDate] = useState<string>("");
+
+  useEffect(() => {
+    // Extract data from URL parameters
+    const weatherDataParam = searchParams.get("weatherData");
+    const locationDataParam = searchParams.get("location");
+    const dateParam = searchParams.get("date");
+
+    if (weatherDataParam) {
+      try {
+        const parsedWeatherData = JSON.parse(weatherDataParam);
+        setWeatherData(parsedWeatherData);
+      } catch (error) {
+        console.error("Error parsing weather data:", error);
+      }
+    }
+
+    if (locationDataParam) {
+      try {
+        const parsedLocationData = JSON.parse(locationDataParam);
+        setLocationData(parsedLocationData);
+      } catch (error) {
+        console.error("Error parsing location data:", error);
+      }
+    }
+
+    if (dateParam) {
+      setForecastDate(dateParam);
+    }
+  }, [searchParams]);
+
+  // Export functions
+  const exportToPDF = () => {
+    const reportContent = generateReportContent();
+    const element = document.createElement("div");
+    element.innerHTML = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 800px;">
+        <h1 style="color: #1e40af; margin-bottom: 20px;">Weather Analysis Report</h1>
+        <pre style="white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.6;">${reportContent}</pre>
+      </div>
+    `;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(element.innerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    }
+    console.log("📄 [PDF] Report sent to print for PDF generation");
+  };
+
+  const exportToCSV = () => {
+    const csvData = [
+      ["Field", "Value"],
+      [
+        "Location",
+        weatherData?.input_location?.name || locationData?.city || "N/A",
+      ],
+      [
+        "Latitude",
+        (
+          weatherData?.input_location?.latitude ||
+          locationData?.latitude ||
+          0
+        ).toString(),
+      ],
+      [
+        "Longitude",
+        (
+          weatherData?.input_location?.longitude ||
+          locationData?.longitude ||
+          0
+        ).toString(),
+      ],
+      [
+        "Forecast Date",
+        weatherData?.input_location?.forecast_date || forecastDate || "N/A",
+      ],
+      [
+        "Predicted Rainfall (mm)",
+        (weatherData?.prediction_output?.predicted_rainfall_mm || 0).toString(),
+      ],
+      [
+        "Max Temperature (°C)",
+        (
+          weatherData?.live_forecast_values?.temperature_max_celsius || 0
+        ).toString(),
+      ],
+      [
+        "Humidity (%)",
+        (weatherData?.live_forecast_values?.humidity_percent || 0).toString(),
+      ],
+      [
+        "Wind Speed (m/s)",
+        (weatherData?.live_forecast_values?.wind_speed_mps || 0).toString(),
+      ],
+      [
+        "Precipitation Probability (%)",
+        (weatherData?.live_forecast_values?.api_pop_percent || 0).toString(),
+      ],
+      [
+        "Temperature Outlook",
+        weatherData?.prediction_output?.temperature_outlook || "N/A",
+      ],
+      ["Wind Outlook", weatherData?.prediction_output?.wind_outlook || "N/A"],
+      ["Rain Outlook", weatherData?.prediction_output?.rain_outlook || "N/A"],
+      ["Erosion Risk", weatherData?.prediction_output?.erosion_risk || "N/A"],
+      ["Model Type", weatherData?.model_details?.model_type || "N/A"],
+      [
+        "Data Source",
+        weatherData?.model_details?.training_data_source || "N/A",
+      ],
+      [
+        "Historical Range (years)",
+        (
+          weatherData?.model_details?.historical_data_range_years || 0
+        ).toString(),
+      ],
+      ["Summary", weatherData?.prediction_output?.final_summary || "N/A"],
+    ];
+
+    const csvContent = csvData
+      .map((row) =>
+        row.map((field) => `"${field.replace(/"/g, '""')}"`).join(",")
+      )
+      .join("\n");
+
+    downloadFile(csvContent, "text/csv", "weather-report.csv");
+    console.log("📊 [CSV] Weather data exported to CSV");
+  };
+
+  const exportToText = () => {
+    const reportContent = generateReportContent();
+    downloadFile(reportContent, "text/plain", "weather-report.txt");
+    console.log("📄 [TEXT] Weather report exported to text file");
+  };
+
+  const generateReportContent = () => {
+    return `WEATHER ANALYSIS REPORT
+======================
+
+Generated: ${new Date().toLocaleString()}
+
+LOCATION INFORMATION
+-------------------
+Location: ${weatherData?.input_location?.name || locationData?.city || "N/A"}
+Coordinates: ${(
+      weatherData?.input_location?.latitude ||
+      locationData?.latitude ||
+      0
+    ).toFixed(4)}, ${(
+      weatherData?.input_location?.longitude ||
+      locationData?.longitude ||
+      0
+    ).toFixed(4)}
+Forecast Date: ${
+      weatherData?.input_location?.forecast_date || forecastDate || "N/A"
+    }
+
+MODEL DETAILS
+-------------
+Data Source: ${
+      weatherData?.model_details?.training_data_source || "NASA POWER Project"
+    }
+Historical Range: ${
+      weatherData?.model_details?.historical_data_range_years || 5
+    } years
+Model Type: ${
+      weatherData?.model_details?.model_type || "Statistical Ridge Regression"
+    }
+Intercept: ${weatherData?.model_details?.intercept?.toFixed(3) || "N/A"}
+
+Model Coefficients:
+${
+  weatherData?.model_details?.coefficients
+    ? Object.entries(weatherData.model_details.coefficients)
+        .map(
+          ([key, value]) =>
+            `  ${key}: ${typeof value === "number" ? value.toFixed(3) : value}`
+        )
+        .join("\n")
+    : "No coefficient data available"
+}
+
+Description: ${
+      weatherData?.model_details?.description ||
+      "Uses historical weather patterns and statistical relationships for rainfall prediction"
+    }
+
+CURRENT WEATHER CONDITIONS
+-------------------------
+Max Temperature: ${
+      weatherData?.live_forecast_values?.temperature_max_celsius?.toFixed(1) ||
+      "N/A"
+    }°C
+Humidity: ${weatherData?.live_forecast_values?.humidity_percent || "N/A"}%
+Wind Speed: ${
+      weatherData?.live_forecast_values?.wind_speed_mps?.toFixed(1) || "N/A"
+    } m/s
+Precipitation Probability: ${
+      weatherData?.live_forecast_values?.api_pop_percent || "N/A"
+    }%
+
+WEATHER PREDICTION
+-----------------
+Predicted Rainfall: ${
+      weatherData?.prediction_output?.predicted_rainfall_mm?.toFixed(2) || "N/A"
+    } mm
+Temperature Outlook: ${
+      weatherData?.prediction_output?.temperature_outlook || "N/A"
+    }
+Wind Outlook: ${weatherData?.prediction_output?.wind_outlook || "N/A"}
+Rain Outlook: ${weatherData?.prediction_output?.rain_outlook || "N/A"}
+Erosion Risk: ${weatherData?.prediction_output?.erosion_risk || "N/A"}
+
+SUMMARY
+-------
+${
+  weatherData?.prediction_output?.final_summary ||
+  "Weather prediction analysis is being processed..."
+}
+
+---
+Report generated by WeatherWise - NASA-powered weather prediction`;
+  };
+
+  const downloadFile = (
+    content: string,
+    mimeType: string,
+    filename: string
+  ) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // WhatsApp weather card sharing function
+  const generateWeatherCard = () => {
+    const location =
+      weatherData?.input_location?.name ||
+      locationData?.city ||
+      "Unknown Location";
+    const date =
+      weatherData?.input_location?.forecast_date || forecastDate || "Today";
+    const temperature =
+      weatherData?.live_forecast_values?.temperature_max_celsius?.toFixed(1) ||
+      "N/A";
+    const rainfall =
+      weatherData?.prediction_output?.predicted_rainfall_mm?.toFixed(1) ||
+      "N/A";
+    const humidity =
+      weatherData?.live_forecast_values?.humidity_percent || "N/A";
+    const windSpeed =
+      weatherData?.live_forecast_values?.wind_speed_mps?.toFixed(1) || "N/A";
+    const rainChance =
+      weatherData?.live_forecast_values?.api_pop_percent || "N/A";
+    const tempOutlook =
+      weatherData?.prediction_output?.temperature_outlook || "N/A";
+    const windOutlook = weatherData?.prediction_output?.wind_outlook || "N/A";
+    const rainOutlook = weatherData?.prediction_output?.rain_outlook || "N/A";
+    const erosionRisk = weatherData?.prediction_output?.erosion_risk || "N/A";
+    const summary =
+      weatherData?.prediction_output?.final_summary ||
+      "Weather prediction powered by NASA data";
+
+    return (
+      `🌤️ *WEATHER FORECAST CARD* 🌤️\n` +
+      `═══════════════════════════════\n\n` +
+      `📍 *Location:* ${location}\n` +
+      `📅 *Date:* ${date}\n\n` +
+      `🌡️ *CURRENT CONDITIONS*\n` +
+      `├─ Temperature: ${temperature}°C\n` +
+      `├─ Humidity: ${humidity}%\n` +
+      `├─ Wind Speed: ${windSpeed} m/s\n` +
+      `└─ Rain Chance: ${rainChance}%\n\n` +
+      `💧 *RAINFALL PREDICTION*\n` +
+      `└─ Expected: ${rainfall}mm\n\n` +
+      `🔮 *WEATHER OUTLOOK*\n` +
+      `├─ Temperature: ${tempOutlook}\n` +
+      `├─ Wind: ${windOutlook}\n` +
+      `├─ Rain: ${rainOutlook}\n` +
+      `└─ Erosion Risk: ${erosionRisk}\n\n` +
+      `📋 *SUMMARY*\n` +
+      `${summary}\n\n` +
+      `═══════════════════════════════\n` +
+      `🚀 *Powered by WeatherWise*\n` +
+      `�️ NASA-grade weather predictions\n` +
+      `#WeatherWise #WeatherForecast #NASA`
+    );
+  };
+
+  const shareToWhatsApp = () => {
+    const weatherCard = generateWeatherCard();
+    const url = `https://wa.me/?text=${encodeURIComponent(weatherCard)}`;
+    window.open(url, "_blank");
+    console.log("� [WHATSAPP] Opening WhatsApp share with weather card");
+  };
+
+  const copyWeatherCard = async () => {
+    const weatherCard = generateWeatherCard();
+    try {
+      await navigator.clipboard.writeText(weatherCard);
+      alert("Weather forecast card copied to clipboard!");
+      console.log("📋 [CLIPBOARD] Weather forecast card copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy to clipboard:", err);
+      // Fallback for older browsers
+      const textArea = document.createElement("textarea");
+      textArea.value = weatherCard;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textArea);
+      alert("Weather forecast card copied to clipboard!");
+    }
+  };
+
   // Add dark background to body
   React.useEffect(() => {
-    document.body.style.backgroundColor = '#0f172a';
+    document.body.style.backgroundColor = "#0f172a";
     return () => {
-      document.body.style.backgroundColor = '';
+      document.body.style.backgroundColor = "";
     };
   }, []);
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
+    <div className="min-h-screen bg-slate-900 text-white p-6 text-center">
       {/* Header */}
-      <header className="bg-slate-800/50 rounded-2xl p-4 mb-8 flex items-center justify-between">
+      <header className=" rounded-2xl p-4 mb-8 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
             <div className="w-6 h-6 bg-blue-400 rounded"></div>
           </div>
           <span className="text-xl font-bold">WeatherWise</span>
-        </div>
-        
-        <nav className="flex items-center gap-8">
-          <a href="#" className="text-gray-300 hover:text-white transition-colors">Dashboard</a>
-          <a href="#" className="text-gray-300 hover:text-white transition-colors">Forecast</a>
-          <a href="#" className="text-blue-400 font-semibold">Export & Share</a>
-        </nav>
-
-        <div className="flex items-center gap-4">
-          <button className="w-10 h-10 rounded-full bg-slate-700/50 flex items-center justify-center hover:bg-slate-700 transition-colors">
-            <Settings className="w-5 h-5 text-gray-300" />
-          </button>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-400"></div>
         </div>
       </header>
 
@@ -40,148 +398,48 @@ export default function ExportShare() {
         {/* Title Section */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold mb-3">Export & Share</h1>
-          <p className="text-gray-400 text-lg">Download your weather insights or share them on social media.</p>
+          <p className="text-gray-400 text-lg">
+            Download your weather insights or share them on social media.
+          </p>
         </div>
 
         {/* Export Options */}
         <div className="mb-12">
           <h2 className="text-2xl font-bold mb-6">Export Options</h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {/* PDF Report */}
-            <button className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group">
+            <button
+              onClick={exportToPDF}
+              className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group"
+            >
               <div className="w-16 h-16 bg-slate-700/50 rounded-xl flex items-center justify-center group-hover:bg-slate-700 transition-colors">
                 <FileText className="w-8 h-8 text-blue-400" />
               </div>
-              <span className="font-semibold">PDF Report</span>
+              <span className="font-semibold">Export PDF</span>
             </button>
 
             {/* Download CSV */}
-            <button className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group">
+            <button
+              onClick={exportToCSV}
+              className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group"
+            >
               <div className="w-16 h-16 bg-slate-700/50 rounded-xl flex items-center justify-center group-hover:bg-slate-700 transition-colors">
-                <Download className="w-8 h-8 text-blue-400" />
+                <Download className="w-8 h-8 text-green-400" />
               </div>
-              <span className="font-semibold">Download CSV</span>
+              <span className="font-semibold">Export CSV</span>
             </button>
 
-            {/* Download JSON */}
-            <button className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group">
+            {/* Download Text */}
+            <button
+              onClick={exportToText}
+              className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group"
+            >
               <div className="w-16 h-16 bg-slate-700/50 rounded-xl flex items-center justify-center group-hover:bg-slate-700 transition-colors">
-                <Code className="w-8 h-8 text-blue-400" />
+                <Code className="w-8 h-8 text-purple-400" />
               </div>
-              <span className="font-semibold">Download JSON</span>
-            </button>
-
-            {/* View JSON */}
-            <button className="bg-slate-800/50 hover:bg-slate-800 transition-all rounded-xl p-6 flex flex-col items-center gap-3 group">
-              <div className="w-16 h-16 bg-slate-700/50 rounded-xl flex items-center justify-center group-hover:bg-slate-700 transition-colors">
-                <Eye className="w-8 h-8 text-blue-400" />
-              </div>
-              <span className="font-semibold">View JSON</span>
+              <span className="font-semibold">Export Text</span>
             </button>
           </div>
-        </div>
-
-        {/* Report Preview */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold mb-6">Report Preview</h2>
-          <div className="bg-slate-800/50 rounded-2xl overflow-hidden">
-            {/* Preview Image */}
-            <div className="relative h-64 bg-gradient-to-r from-teal-900 to-slate-800">
-              {/* Dashboard preview mockup */}
-              <div className="absolute inset-0 p-8">
-                <div className="grid grid-cols-3 gap-4 h-full">
-                  {/* Left side - bars */}
-                  <div className="space-y-3">
-                    <div className="h-3 bg-teal-600/40 rounded"></div>
-                    <div className="grid grid-cols-4 gap-2">
-                      {[30, 50, 40, 60].map((h, i) => (
-                        <div key={i} className="bg-teal-500/40 rounded" style={{ height: `${h}px` }}></div>
-                      ))}
-                    </div>
-                    <div className="h-3 bg-teal-600/40 rounded w-3/4"></div>
-                  </div>
-
-                  {/* Middle - stats */}
-                  <div className="flex flex-col justify-center gap-3">
-                    <div className="bg-slate-700/40 rounded-lg p-3 space-y-2">
-                      <div className="h-2 bg-teal-500/40 rounded w-1/2"></div>
-                      <div className="h-2 bg-teal-500/40 rounded w-3/4"></div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-slate-700/40 rounded-lg p-2 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-teal-500/40 rounded-full"></div>
-                      </div>
-                      <div className="bg-slate-700/40 rounded-lg p-2 flex items-center justify-center">
-                        <div className="w-8 h-8 bg-teal-500/40 rounded-full"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right side - hand pointing */}
-                  <div className="flex items-center justify-end">
-                    <div className="relative">
-                      {/* Pie chart mockup */}
-                      <div className="w-24 h-24 bg-gradient-to-br from-teal-400/30 to-teal-600/30 rounded-full"></div>
-                      {/* Hand illustration */}
-                      <div className="absolute -right-12 top-8">
-                        <svg width="120" height="80" viewBox="0 0 120 80" fill="none">
-                          <path d="M 20 60 Q 30 50 40 55 L 45 50 Q 50 45 55 50 L 60 45 Q 65 40 70 45 L 75 40 Q 80 35 85 40 L 90 35 Q 95 30 100 35 L 100 50 Q 95 60 85 65 L 60 70 Q 40 70 25 65 Z" fill="#d4a574" />
-                          <ellipse cx="30" cy="55" rx="8" ry="6" fill="#c89a68" />
-                        </svg>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Report Info */}
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-2">WeatherWise Report</h3>
-              <p className="text-gray-400 mb-1">Detailed weather analysis for your outdoor activities.</p>
-              <p className="text-sm text-gray-500">Weather Report for Central Park, NY</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Social Share Preview */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold mb-6">Social Share Preview</h2>
-          <div className="bg-slate-800/50 rounded-2xl overflow-hidden">
-            {/* Social Card Preview */}
-            <div className="relative bg-gradient-to-br from-teal-400 via-cyan-300 to-teal-400 p-8">
-              <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-lg mx-auto">
-                <div className="text-center mb-8">
-                  <h3 className="text-2xl font-bold text-gray-800 mb-2">Lioremm ipsum loiseNtir at c.amat</h3>
-                  <p className="text-gray-500 text-sm">Lorem ipsum dolor sit amet, consectetur adipiscing elit</p>
-                </div>
-
-                {/* Weather Icons */}
-                <div className="flex justify-center gap-8">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="w-16 h-16 bg-teal-500 rounded-full flex items-center justify-center">
-                      <Share2 className="w-8 h-8 text-white" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Share Info */}
-            <div className="p-6">
-              <h3 className="text-xl font-bold mb-2">Weather Forecast for Central Park, NY</h3>
-              <p className="text-gray-400 mb-3">Probability of rain: 10%, Temperature: 25°C</p>
-              <a href="#" className="text-blue-400 hover:text-blue-300 text-sm font-semibold">WeatherWise</a>
-            </div>
-          </div>
-        </div>
-
-        {/* Share Button */}
-        <div className="flex justify-end">
-          <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-semibold flex items-center gap-2 transition-colors shadow-lg">
-            <Share2 className="w-5 h-5" />
-            Share on Social Media
-          </button>
         </div>
       </div>
     </div>
