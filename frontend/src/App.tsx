@@ -1,14 +1,25 @@
-import Landing from './component/landing';
-import Sec from './component/sec';
-import Comp from './component/comp';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Landing from './components/landing';
+import Sec from './components/sec';
+import Comp from './components/comp';
+import DashboardResult from './components/resultdashboard';
+import ExportShare from './components/export';
 
 function App() {
   return (
-    <>
-      <Landing />
-      <Sec />
-      <Comp />
-    </>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={
+          <>
+            <Landing />
+            <Sec />
+            <Comp />
+          </>
+        } />
+        <Route path="/dashboardresult" element={<DashboardResult/>} />
+        <Route path="/export" element={<ExportShare />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 
