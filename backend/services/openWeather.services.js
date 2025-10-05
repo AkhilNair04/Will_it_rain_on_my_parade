@@ -24,7 +24,7 @@ class OpenWeatherMapService {
     return { lat, lon };
   }
 
-  async getLiveForecast(lat, lon, start_hour, end_hour) {
+  async getLiveForecast(lat, lon, start_hour, end_hour, forecastDate = null) {
     console.log(
       "\ud83c\udf24\ufe0f [OPENWEATHER SERVICE] Starting forecast fetch"
     );
@@ -54,14 +54,20 @@ class OpenWeatherMapService {
     console.log("   - Response status:", response.status);
     console.log("   - Total forecast items:", response.data.list.length);
 
-    const tomorrow = new Date();
-    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    // Determine target date (UTC) to filter forecasts. If forecastDate is provided, use it.
+    let targetDateUTC;
+    if (forecastDate) {
+      // Expecting forecastDate in YYYY-MM-DD or ISO format
+      const parsed = new Date(forecastDate);
+      targetDateUTC = new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+    } else {
+      const tomorrow = new Date();
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      targetDateUTC = new Date(Date.UTC(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth(), tomorrow.getUTCDate()));
+    }
 
-    console.log(
-      "\ud83d\udcc5 [OPENWEATHER SERVICE] Target date for filtering:"
-    );
-    console.log("   - Tomorrow date:", tomorrow.toISOString());
-    console.log("   - Tomorrow UTC date:", tomorrow.getUTCDate());
+    console.log("\ud83d\udcc5 [OPENWEATHER SERVICE] Target date for filtering:");
+    console.log("   - Target UTC date (YYYY-MM-DD):", targetDateUTC.toISOString().slice(0, 10));
 
     console.log("\ud83d\udd0d [OPENWEATHER SERVICE] All forecast times:");
     response.data.list.slice(0, 5).forEach((forecast, i) => {
@@ -74,8 +80,10 @@ class OpenWeatherMapService {
     });
 
     const selectedBlocks = response.data.list.filter((forecast) => {
-      const forecastTime = new Date(forecast.dt_txt.replace(" ", "T") + "Z");
-      const isCorrectDate = forecastTime.getUTCDate() === tomorrow.getUTCDate();
+  const forecastTime = new Date(forecast.dt_txt.replace(" ", "T") + "Z");
+  // Compare full UTC date (YYYY-MM-DD) to avoid mismatches around month/year boundaries
+  const forecastUTCDate = new Date(Date.UTC(forecastTime.getUTCFullYear(), forecastTime.getUTCMonth(), forecastTime.getUTCDate()));
+  const isCorrectDate = forecastUTCDate.getTime() === targetDateUTC.getTime();
       const isCorrectHour =
         forecastTime.getUTCHours() >= start_hour &&
         forecastTime.getUTCHours() <= end_hour;
