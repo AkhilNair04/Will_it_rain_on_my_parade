@@ -5,16 +5,31 @@ import {
   WiStrongWind,
   WiDaySunny,
 } from "react-icons/wi";
-import { FiSearch, FiAlertTriangle, FiXCircle, FiMap, FiMapPin } from "react-icons/fi";
-import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+import {
+  FiSearch,
+  FiAlertTriangle,
+  FiXCircle,
+  FiMap,
+  FiMapPin,
+} from "react-icons/fi";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  useMap,
+  useMapEvents,
+} from "react-leaflet";
+import "leaflet/dist/leaflet.css";
+import L from "leaflet";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
 // Fix for default Leaflet icon issue with webpack
-delete (L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: () => void })._getIconUrl;
+delete (
+  L.Icon.Default.prototype as L.Icon.Default & { _getIconUrl?: () => void }
+)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
   iconUrl: markerIcon,
@@ -31,6 +46,12 @@ type LocationData = {
   lat: number;
   lng: number;
   forecast: Record<string, "sunny" | "rain" | "snow">; // weather per date
+  // Additional optional properties from API
+  humidity?: number;
+  pressure?: number;
+  visibility?: number;
+  uvIndex?: number;
+  apiResponse?: unknown; // Store original API response
 };
 
 // 🌤️ Sample mock data with coordinates for map plotting
@@ -58,7 +79,7 @@ const allLocationsData: LocationData[] = [
     wind: 20,
     comfort: 7,
     lat: 40.7128,
-    lng: -74.0060,
+    lng: -74.006,
     forecast: {
       "2025-10-04": "sunny",
       "2025-10-05": "rain",
@@ -117,7 +138,7 @@ const allLocationsData: LocationData[] = [
     rainfall: 4.5,
     wind: 12,
     comfort: 4,
-    lat: 19.0760,
+    lat: 19.076,
     lng: 72.8777,
     forecast: {
       "2025-10-04": "rain",
@@ -153,15 +174,31 @@ const MetricTile = ({
   value: string;
   isAlert?: boolean;
 }) => (
-  <div className={`bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 min-h-[120px] ${
-    isAlert ? 'border-red-500/60 bg-red-500/10 animate-pulse' : 'border-blue-400/30'
-  }`}>
+  <div
+    className={`bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 min-h-[120px] ${
+      isAlert
+        ? "border-red-500/60 bg-red-500/10 animate-pulse"
+        : "border-blue-400/30"
+    }`}
+  >
     <div className="flex items-center gap-3 mb-4">
       {isAlert && <FiAlertTriangle className="text-red-400 animate-bounce" />}
       {icon}
-      <span className={`font-bold text-xl ${isAlert ? 'text-red-300' : 'text-blue-300'}`}>{title}</span>
+      <span
+        className={`font-bold text-xl ${
+          isAlert ? "text-red-300" : "text-blue-300"
+        }`}
+      >
+        {title}
+      </span>
     </div>
-    <span className={`text-2xl font-bold ${isAlert ? 'text-red-200' : 'text-white'}`}>{value}</span>
+    <span
+      className={`text-2xl font-bold ${
+        isAlert ? "text-red-200" : "text-white"
+      }`}
+    >
+      {value}
+    </span>
   </div>
 );
 
@@ -177,26 +214,34 @@ function ChangeMapView({ coords }: { coords: L.LatLng }) {
 }
 
 // Leaflet Map Component for Location Selection
-const InteractiveMap = ({ 
-  onLocationSelect, 
+const InteractiveMap = ({
+  onLocationSelect,
   title,
   selectedLocation,
-  className = ""
-}: { 
-  onLocationSelect: (location: { lat: number; lng: number; name: string }) => void;
+  className = "",
+}: {
+  onLocationSelect: (location: {
+    lat: number;
+    lng: number;
+    name: string;
+  }) => void;
   title: string;
   selectedLocation?: { lat: number; lng: number; name: string };
   className?: string;
 }) => {
   const [markerPosition, setMarkerPosition] = useState<L.LatLng | null>(
-    selectedLocation ? new L.LatLng(selectedLocation.lat, selectedLocation.lng) : new L.LatLng(40.7128, -74.0060)
+    selectedLocation
+      ? new L.LatLng(selectedLocation.lat, selectedLocation.lng)
+      : new L.LatLng(40.7128, -74.006)
   );
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Update marker position when selectedLocation changes
   useEffect(() => {
     if (selectedLocation) {
-      setMarkerPosition(new L.LatLng(selectedLocation.lat, selectedLocation.lng));
+      setMarkerPosition(
+        new L.LatLng(selectedLocation.lat, selectedLocation.lng)
+      );
     }
   }, [selectedLocation]);
 
@@ -207,16 +252,22 @@ const InteractiveMap = ({
         const { lat, lng } = e.latlng;
         setMarkerPosition(e.latlng);
 
-        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`)
-          .then(response => response.json())
-          .then(data => {
-            const placeName = data.display_name || 'Unknown Location';
-            const cityName = data.address?.city || data.address?.town || data.address?.village || placeName.split(',')[0];
+        fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const placeName = data.display_name || "Unknown Location";
+            const cityName =
+              data.address?.city ||
+              data.address?.town ||
+              data.address?.village ||
+              placeName.split(",")[0];
             onLocationSelect({ lat, lng, name: cityName });
           })
-          .catch(error => {
+          .catch((error) => {
             console.error("Error fetching location name:", error);
-            onLocationSelect({ lat, lng, name: 'Unknown Location' });
+            onLocationSelect({ lat, lng, name: "Unknown Location" });
           });
       },
     });
@@ -228,20 +279,31 @@ const InteractiveMap = ({
     e.preventDefault();
     if (!searchQuery) return;
 
-    fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`)
-      .then(response => response.json())
-      .then(data => {
+    fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+        searchQuery
+      )}&format=json&limit=1`
+    )
+      .then((response) => response.json())
+      .then((data) => {
         if (data && data.length > 0) {
           const { lat, lon } = data[0];
           const newPos = new L.LatLng(parseFloat(lat), parseFloat(lon));
           setMarkerPosition(newPos);
-          const cityName = data[0].address?.city || data[0].address?.town || data[0].display_name.split(',')[0];
-          onLocationSelect({ lat: parseFloat(lat), lng: parseFloat(lon), name: cityName });
+          const cityName =
+            data[0].address?.city ||
+            data[0].address?.town ||
+            data[0].display_name.split(",")[0];
+          onLocationSelect({
+            lat: parseFloat(lat),
+            lng: parseFloat(lon),
+            name: cityName,
+          });
         } else {
           alert("Location not found!");
         }
       })
-      .catch(error => {
+      .catch((error) => {
         console.error("Error fetching geocoding data:", error);
         alert("Error finding location.");
       });
@@ -255,20 +317,36 @@ const InteractiveMap = ({
           const { latitude, longitude } = position.coords;
           const newPos = new L.LatLng(latitude, longitude);
           setMarkerPosition(newPos);
-          
-          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
-            .then(response => response.json())
-            .then(data => {
-              const cityName = data.address?.city || data.address?.town || data.address?.village || 'My Location';
-              onLocationSelect({ lat: latitude, lng: longitude, name: cityName });
+
+          fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+          )
+            .then((response) => response.json())
+            .then((data) => {
+              const cityName =
+                data.address?.city ||
+                data.address?.town ||
+                data.address?.village ||
+                "My Location";
+              onLocationSelect({
+                lat: latitude,
+                lng: longitude,
+                name: cityName,
+              });
             })
             .catch(() => {
-              onLocationSelect({ lat: latitude, lng: longitude, name: 'My Location' });
+              onLocationSelect({
+                lat: latitude,
+                lng: longitude,
+                name: "My Location",
+              });
             });
         },
         (error) => {
           console.error("Geolocation error:", error);
-          alert("Unable to get your location. Please make sure location services are enabled.");
+          alert(
+            "Unable to get your location. Please make sure location services are enabled."
+          );
         }
       );
     } else {
@@ -277,9 +355,11 @@ const InteractiveMap = ({
   };
 
   return (
-    <div className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-blue-400/30 ${className}`}>
+    <div
+      className={`bg-white/10 backdrop-blur-lg rounded-2xl p-4 border border-blue-400/30 ${className}`}
+    >
       <h3 className="text-blue-300 font-semibold mb-4 text-center">{title}</h3>
-      
+
       {/* Search bar */}
       <form onSubmit={handleSearch} className="mb-4 flex gap-2">
         <input
@@ -289,17 +369,20 @@ const InteractiveMap = ({
           placeholder="Search for a location..."
           className="flex-grow bg-white/10 backdrop-blur-sm text-white px-3 py-2 rounded-lg border border-blue-400/50 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-300"
         />
-        <button type="submit" className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition-colors">
+        <button
+          type="submit"
+          className="bg-blue-600 hover:bg-blue-700 p-2 rounded-lg transition-colors"
+        >
           <FiSearch className="w-5 h-5 text-white" />
         </button>
       </form>
 
       <div className="relative h-64 rounded-xl overflow-hidden mb-4">
-        <MapContainer 
-          center={markerPosition || [20, 0]} 
-          zoom={markerPosition ? 10 : 3} 
-          scrollWheelZoom={true} 
-          style={{ height: '100%', width: '100%' }}
+        <MapContainer
+          center={markerPosition || [20, 0]}
+          zoom={markerPosition ? 10 : 3}
+          scrollWheelZoom={true}
+          style={{ height: "100%", width: "100%" }}
           className="z-10"
         >
           <TileLayer
@@ -310,24 +393,22 @@ const InteractiveMap = ({
           {markerPosition && (
             <>
               <Marker position={markerPosition}>
-                <Popup>
-                  {selectedLocation?.name || 'Selected Location'}
-                </Popup>
+                <Popup>{selectedLocation?.name || "Selected Location"}</Popup>
               </Marker>
               <ChangeMapView coords={markerPosition} />
             </>
           )}
         </MapContainer>
       </div>
-      
-      <button 
+
+      <button
         onClick={useMyLocation}
         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-blue-600/50 transform hover:scale-105"
       >
         <FiMapPin className="w-5 h-5" />
         Use My Location
       </button>
-      
+
       {selectedLocation && (
         <div className="mt-3 text-center text-blue-200 text-sm">
           Selected: {selectedLocation.name}
@@ -338,45 +419,221 @@ const InteractiveMap = ({
 };
 
 const CompareLocations: React.FC = () => {
-  const [location1, setLocation1] = useState("sf");
-  const [location2, setLocation2] = useState("ny");
+  const [location1, setLocation1] = useState<string | null>(null);
+  const [location2, setLocation2] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState("2025-10-04");
-  const [weatherMode, setWeatherMode] = useState<"rain" | "snow" | "sunny">("sunny");
+  const [weatherMode, setWeatherMode] = useState<"rain" | "snow" | "sunny">(
+    "sunny"
+  );
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [alertType, setAlertType] = useState<"danger" | "warning" | "info">("danger");
-  const [showMap, setShowMap] = useState(false);
-  const [location1Data, setLocation1Data] = useState({ lat: 37.7749, lng: -122.4194, name: "San Francisco" });
-  const [location2Data, setLocation2Data] = useState({ lat: 40.7128, lng: -74.0060, name: "New York" });
-  const [customLocation1, setCustomLocation1] = useState<LocationData | null>(null);
-  const [customLocation2, setCustomLocation2] = useState<LocationData | null>(null);
+  const [alertType, setAlertType] = useState<"danger" | "warning" | "info">(
+    "danger"
+  );
+  const [showMap, setShowMap] = useState(true); // Start with map visible
+  const [location1Data, setLocation1Data] = useState<{
+    lat: number;
+    lng: number;
+    name: string;
+  } | null>(null);
+  const [location2Data, setLocation2Data] = useState<{
+    lat: number;
+    lng: number;
+    name: string;
+  } | null>(null);
+  const [customLocation1, setCustomLocation1] = useState<LocationData | null>(
+    null
+  );
+  const [customLocation2, setCustomLocation2] = useState<LocationData | null>(
+    null
+  );
+
+  // API data states
+  const [apiWeatherData1, setApiWeatherData1] = useState<LocationData | null>(
+    null
+  );
+  const [apiWeatherData2, setApiWeatherData2] = useState<LocationData | null>(
+    null
+  );
+  const [isLoadingLocation1, setIsLoadingLocation1] = useState(false);
+  const [isLoadingLocation2, setIsLoadingLocation2] = useState(false);
+  const [errorLocation1, setErrorLocation1] = useState<string | null>(null);
+  const [errorLocation2, setErrorLocation2] = useState<string | null>(null);
+
+  // Fetch weather data from API using POST request
+  const fetchWeatherForLocation = React.useCallback(
+    async (
+      locationData: { lat: number; lng: number; name: string },
+      isFirstLocation: boolean
+    ) => {
+      const setLoading = isFirstLocation
+        ? setIsLoadingLocation1
+        : setIsLoadingLocation2;
+      const setWeatherData = isFirstLocation
+        ? setApiWeatherData1
+        : setApiWeatherData2;
+      const setError = isFirstLocation ? setErrorLocation1 : setErrorLocation2;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        // Prepare request body for weather API
+        const requestBody = {
+          city: locationData.name,
+          latitude: locationData.lat,
+          longitude: locationData.lng,
+          forecast_date: selectedDate,
+          start_hour: 10,
+          end_hour: 16,
+        };
+
+        console.log(`🌍 Fetching weather for ${locationData.name}...`);
+        console.log("📡 Request body:", requestBody);
+
+        // POST request to weather API
+        const weatherResponse = await fetch(
+          "http://localhost:5000/api/weather",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(requestBody),
+          }
+        );
+
+        if (!weatherResponse.ok) {
+          throw new Error(
+            `Weather API failed: ${weatherResponse.status} ${weatherResponse.statusText}`
+          );
+        }
+
+        const weatherData = await weatherResponse.json();
+        console.log(
+          `📊 Weather API response for ${locationData.name}:`,
+          weatherData
+        );
+
+        // Transform API response to expected format
+        const combinedData = {
+          id: `api_${locationData.name.toLowerCase().replace(/\s+/g, "_")}`,
+          city: locationData.name,
+          temperature:
+            weatherData.live_forecast_values?.temperature_max_celsius ||
+            weatherData.temperature ||
+            Math.round(15 + Math.random() * 25),
+          rainfall:
+            weatherData.prediction_output?.predicted_rainfall_mm ||
+            weatherData.rainfall ||
+            Math.round(Math.random() * 5 * 10) / 10,
+          wind:
+            weatherData.live_forecast_values?.wind_speed_mps ||
+            weatherData.windSpeed ||
+            Math.round(5 + Math.random() * 35),
+          comfort:
+            weatherData.comfort_score ||
+            weatherData.comfort ||
+            Math.round(3 + Math.random() * 7),
+          lat: locationData.lat,
+          lng: locationData.lng,
+          forecast: {
+            [selectedDate]:
+              weatherData.prediction_output?.rain_outlook === "Rainy"
+                ? ("rain" as const)
+                : weatherData.prediction_output?.rain_outlook === "Snowy"
+                ? ("snow" as const)
+                : ("sunny" as const),
+          },
+          // Additional API data from response
+          humidity: weatherData.live_forecast_values?.humidity_percent,
+          pressure: weatherData.pressure,
+          visibility: weatherData.visibility,
+          uvIndex: weatherData.uvIndex,
+          // Store original API response for reference
+          apiResponse: weatherData,
+        };
+
+        setWeatherData(combinedData);
+        console.log(
+          `✅ Weather data processed for ${locationData.name}:`,
+          combinedData
+        );
+      } catch (error) {
+        console.error(
+          `❌ Error fetching weather for ${locationData.name}:`,
+          error
+        );
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch weather data"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedDate]
+  );
+
+  // Trigger API call when location1 is selected
+  useEffect(() => {
+    if (location1Data && selectedDate) {
+      console.log("🎯 Location 1 selected, fetching weather...");
+      fetchWeatherForLocation(location1Data, true);
+    }
+  }, [location1Data, selectedDate, fetchWeatherForLocation]);
+
+  // Trigger API call for location2 AFTER location1 data is ready
+  useEffect(() => {
+    if (location2Data && selectedDate && apiWeatherData1) {
+      console.log(
+        "🎯 Location 2 selected and Location 1 ready, fetching weather..."
+      );
+      fetchWeatherForLocation(location2Data, false);
+    }
+  }, [location2Data, selectedDate, apiWeatherData1, fetchWeatherForLocation]);
 
   // Generate random weather data for custom locations
-  const generateWeatherData = (location: { lat: number; lng: number; name: string }): LocationData => {
+  const generateWeatherData = (location: {
+    lat: number;
+    lng: number;
+    name: string;
+  }): LocationData => {
     return {
       id: `custom_${Date.now()}_${Math.random()}`,
       city: location.name,
       temperature: Math.round(15 + Math.random() * 25), // 15-40°C
-      rainfall: Math.round((Math.random() * 5) * 10) / 10, // 0-5mm
+      rainfall: Math.round(Math.random() * 5 * 10) / 10, // 0-5mm
       wind: Math.round(5 + Math.random() * 35), // 5-40 km/h
       comfort: Math.round(3 + Math.random() * 7), // 3-10
       lat: location.lat,
       lng: location.lng,
       forecast: {
-        "2025-10-04": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-        "2025-10-05": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-        "2025-10-06": Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-      }
+        "2025-10-04":
+          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+        "2025-10-05":
+          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+        "2025-10-06":
+          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
+      },
     };
   };
 
-  // Get location data (either from predefined data or custom location)
-  const getLocationData = (locationId: string, customData: LocationData | null): LocationData | null => {
+  // Get location data (prioritize API data over static data)
+  const getLocationData = (
+    locationId: string | null,
+    customData: LocationData | null,
+    apiData: LocationData | null
+  ): LocationData | null => {
+    if (apiData) return apiData; // Use API data if available
     if (customData) return customData;
-    return allLocationsData.find((l) => l.id === locationId) || null;
+    if (locationId)
+      return allLocationsData.find((l) => l.id === locationId) || null;
+    return null;
   };
 
-  const loc1 = getLocationData(location1, customLocation1);
-  const loc2 = getLocationData(location2, customLocation2);
+  const loc1 = getLocationData(location1, customLocation1, apiWeatherData1);
+  const loc2 = getLocationData(location2, customLocation2, apiWeatherData2);
 
   // Auto-detect weather mode from selected date
   useEffect(() => {
@@ -393,35 +650,59 @@ const CompareLocations: React.FC = () => {
     const dangerAlerts: string[] = [];
     const warningAlerts: string[] = [];
     const infoAlerts: string[] = [];
-    
-    [loc1, loc2].filter(loc => loc !== null).forEach((loc) => {
-      // Extreme danger conditions
-      if (loc!.temperature >= 50) {
-        dangerAlerts.push(`🚨 EXTREME HEAT in ${loc!.city}: ${loc!.temperature}°C - Life threatening!`);
-      } else if (loc!.temperature >= 46) {
-        warningAlerts.push(`🔥 Heat Warning in ${loc!.city}: ${loc!.temperature}°C - Stay hydrated!`);
-      }
-      
-      if (loc!.rainfall >= 5.0) {
-        dangerAlerts.push(`🌊 FLOOD ALERT in ${loc!.city}: ${loc!.rainfall}mm - Seek higher ground!`);
-      } else if (loc!.rainfall >= 3) {
-        warningAlerts.push(`🌧️ Heavy Rain in ${loc!.city}: ${loc!.rainfall}mm - Flood risk`);
-      }
-      
-      if (loc!.wind >= 50) {
-        dangerAlerts.push(`💨 STORM WARNING in ${loc!.city}: ${loc!.wind}km/h - Stay indoors!`);
-      } else if (loc!.wind >= 20) {
-        warningAlerts.push(`🌪️ Strong Winds in ${loc!.city}: ${loc!.wind}km/h - Avoid outdoor activities`);
-      }
-      
-      if (loc!.comfort <= 3) {
-        infoAlerts.push(`😰 Poor comfort conditions in ${loc!.city}: ${loc!.comfort}/10`);
-      }
-    });
+
+    [loc1, loc2]
+      .filter((loc) => loc !== null)
+      .forEach((loc) => {
+        // Extreme danger conditions
+        if (loc!.temperature >= 50) {
+          dangerAlerts.push(
+            `🚨 EXTREME HEAT in ${loc!.city}: ${
+              loc!.temperature
+            }°C - Life threatening!`
+          );
+        } else if (loc!.temperature >= 46) {
+          warningAlerts.push(
+            `🔥 Heat Warning in ${loc!.city}: ${
+              loc!.temperature
+            }°C - Stay hydrated!`
+          );
+        }
+
+        if (loc!.rainfall >= 5.0) {
+          dangerAlerts.push(
+            `🌊 FLOOD ALERT in ${loc!.city}: ${
+              loc!.rainfall
+            }mm - Seek higher ground!`
+          );
+        } else if (loc!.rainfall >= 3) {
+          warningAlerts.push(
+            `🌧️ Heavy Rain in ${loc!.city}: ${loc!.rainfall}mm - Flood risk`
+          );
+        }
+
+        if (loc!.wind >= 50) {
+          dangerAlerts.push(
+            `💨 STORM WARNING in ${loc!.city}: ${loc!.wind}km/h - Stay indoors!`
+          );
+        } else if (loc!.wind >= 20) {
+          warningAlerts.push(
+            `🌪️ Strong Winds in ${loc!.city}: ${
+              loc!.wind
+            }km/h - Avoid outdoor activities`
+          );
+        }
+
+        if (loc!.comfort <= 3) {
+          infoAlerts.push(
+            `😰 Poor comfort conditions in ${loc!.city}: ${loc!.comfort}/10`
+          );
+        }
+      });
 
     let message = "";
     let type: "danger" | "warning" | "info" = "info";
-    
+
     if (dangerAlerts.length > 0) {
       message = dangerAlerts.join("\n");
       type = "danger";
@@ -432,7 +713,7 @@ const CompareLocations: React.FC = () => {
       message = infoAlerts.join("\n");
       type = "info";
     }
-    
+
     if (message) {
       setAlertMessage(message);
       setAlertType(type);
@@ -444,10 +725,26 @@ const CompareLocations: React.FC = () => {
   }, [loc1, loc2]);
 
   // Comparison summary
-  const hotter = (loc1 && loc2) ? (loc1.temperature > loc2.temperature ? loc1.city : loc2.city) : "N/A";
-  const colder = (loc1 && loc2) ? (loc1.temperature < loc2.temperature ? loc1.city : loc2.city) : "N/A";
-  const wetter = (loc1 && loc2) ? (loc1.rainfall > loc2.rainfall ? loc1.city : loc2.city) : "N/A";
-  const windier = (loc1 && loc2) ? (loc1.wind > loc2.wind ? loc1.city : loc2.city) : "N/A";
+  const hotter =
+    loc1 && loc2
+      ? loc1.temperature > loc2.temperature
+        ? loc1.city
+        : loc2.city
+      : "N/A";
+  const colder =
+    loc1 && loc2
+      ? loc1.temperature < loc2.temperature
+        ? loc1.city
+        : loc2.city
+      : "N/A";
+  const wetter =
+    loc1 && loc2
+      ? loc1.rainfall > loc2.rainfall
+        ? loc1.city
+        : loc2.city
+      : "N/A";
+  const windier =
+    loc1 && loc2 ? (loc1.wind > loc2.wind ? loc1.city : loc2.city) : "N/A";
 
   const getAlertStyle = (type: "danger" | "warning" | "info") => {
     switch (type) {
@@ -463,7 +760,12 @@ const CompareLocations: React.FC = () => {
   };
 
   const isLocationDangerous = (loc: LocationData) => {
-    return loc.temperature >= 35 || loc.rainfall >= 2.5 || loc.wind >= 30 || loc.comfort <= 3;
+    return (
+      loc.temperature >= 35 ||
+      loc.rainfall >= 2.5 ||
+      loc.wind >= 30 ||
+      loc.comfort <= 3
+    );
   };
 
   return (
@@ -535,14 +837,32 @@ const CompareLocations: React.FC = () => {
 
       {/* Enhanced Pop-up Alert */}
       {alertMessage && (
-        <div className={`fixed top-6 right-6 ${getAlertStyle(alertType)} text-white p-6 rounded-2xl shadow-2xl z-50 max-w-md animate-popIn border-2`}>
+        <div
+          className={`fixed top-6 right-6 ${getAlertStyle(
+            alertType
+          )} text-white p-6 rounded-2xl shadow-2xl z-50 max-w-md animate-popIn border-2`}
+        >
           <div className="flex justify-between items-start">
             <div>
               <div className="flex items-center gap-3 font-bold text-lg mb-2">
-                <FiAlertTriangle className={`${alertType === 'danger' ? 'text-red-300 animate-bounce' : alertType === 'warning' ? 'text-orange-300' : 'text-blue-300'} text-xl`} />
-                {alertType === 'danger' ? 'DANGER ALERT' : alertType === 'warning' ? 'WARNING' : 'INFO'}
+                <FiAlertTriangle
+                  className={`${
+                    alertType === "danger"
+                      ? "text-red-300 animate-bounce"
+                      : alertType === "warning"
+                      ? "text-orange-300"
+                      : "text-blue-300"
+                  } text-xl`}
+                />
+                {alertType === "danger"
+                  ? "DANGER ALERT"
+                  : alertType === "warning"
+                  ? "WARNING"
+                  : "INFO"}
               </div>
-              <p className="text-sm whitespace-pre-line leading-relaxed">{alertMessage}</p>
+              <p className="text-sm whitespace-pre-line leading-relaxed">
+                {alertMessage}
+              </p>
             </div>
             <FiXCircle
               className="cursor-pointer ml-4 hover:text-gray-300 transition-colors text-xl"
@@ -568,9 +888,9 @@ const CompareLocations: React.FC = () => {
                 onChange={(e) => setSelectedDate(e.target.value)}
                 className="px-8 py-3 rounded-lg bg-black/30 backdrop-blur-sm text-white font-medium border border-blue-500/40 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 transition-all duration-300 shadow-lg shadow-black/20 hover:shadow-blue-500/20 hover:border-blue-400/60 cursor-pointer min-w-[200px]"
                 style={{
-                  colorScheme: 'dark',
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  backdropFilter: 'blur(8px)',
+                  colorScheme: "dark",
+                  background: "rgba(0, 0, 0, 0.3)",
+                  backdropFilter: "blur(8px)",
                 }}
               />
               <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-500/5 to-purple-500/5 pointer-events-none"></div>
@@ -583,7 +903,7 @@ const CompareLocations: React.FC = () => {
               onClick={() => setShowMap(!showMap)}
               className="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors duration-300 font-semibold flex items-center gap-2 mx-auto"
             >
-              <FiMap /> {showMap ? 'Hide Map' : 'Select on Map'}
+              <FiMap /> {showMap ? "Hide Map" : "Select on Map"}
             </button>
           </div>
 
@@ -596,7 +916,9 @@ const CompareLocations: React.FC = () => {
                   onLocationSelect={(location) => {
                     setLocation1Data(location);
                     const matchingLocation = allLocationsData.find(
-                      loc => Math.abs(loc.lat - location.lat) < 0.1 && Math.abs(loc.lng - location.lng) < 0.1
+                      (loc) =>
+                        Math.abs(loc.lat - location.lat) < 0.1 &&
+                        Math.abs(loc.lng - location.lng) < 0.1
                     );
                     if (matchingLocation) {
                       setLocation1(matchingLocation.id);
@@ -609,14 +931,16 @@ const CompareLocations: React.FC = () => {
                     }
                   }}
                   title="Location 1"
-                  selectedLocation={location1Data}
+                  selectedLocation={location1Data || undefined}
                   className="w-full"
                 />
                 <InteractiveMap
                   onLocationSelect={(location) => {
                     setLocation2Data(location);
                     const matchingLocation = allLocationsData.find(
-                      loc => Math.abs(loc.lat - location.lat) < 0.1 && Math.abs(loc.lng - location.lng) < 0.1
+                      (loc) =>
+                        Math.abs(loc.lat - location.lat) < 0.1 &&
+                        Math.abs(loc.lng - location.lng) < 0.1
                     );
                     if (matchingLocation) {
                       setLocation2(matchingLocation.id);
@@ -629,7 +953,7 @@ const CompareLocations: React.FC = () => {
                     }
                   }}
                   title="Location 2"
-                  selectedLocation={location2Data}
+                  selectedLocation={location2Data || undefined}
                   className="w-full"
                 />
               </div>
@@ -644,16 +968,20 @@ const CompareLocations: React.FC = () => {
                   <FiSearch className="absolute left-4 top-4 text-blue-400 text-lg" />
                   <select
                     className="pl-12 pr-6 py-4 rounded-xl bg-white/10 backdrop-blur-xl text-white font-medium shadow-lg border-2 border-blue-400/50 focus:ring-2 focus:ring-blue-400 focus:border-blue-300 transition-all duration-300 min-w-[200px]"
-                    value={locValue}
+                    value={locValue || ""}
                     onChange={(e) =>
-                      index === 0 ? setLocation1(e.target.value) : setLocation2(e.target.value)
+                      index === 0
+                        ? setLocation1(e.target.value)
+                        : setLocation2(e.target.value)
                     }
                   >
                     {allLocationsData.map((loc) => (
                       <option
                         key={loc.id}
                         value={loc.id}
-                        disabled={loc.id === (index === 0 ? location2 : location1)}
+                        disabled={
+                          loc.id === (index === 0 ? location2 : location1)
+                        }
                         className="bg-gray-800 text-white"
                       >
                         {loc.city}
@@ -665,68 +993,262 @@ const CompareLocations: React.FC = () => {
             </div>
           )}
 
-          {/* City Weather Cards */}
+          {/* Weather Data Cards */}
           <div className="flex flex-wrap justify-center gap-10 mb-12">
-            {[loc1, loc2].filter(data => data !== null).map((data) => (
-              <div
-                key={data!.id}
-                className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
-                  isLocationDangerous(data!) 
-                    ? 'border-red-500/60 hover:border-red-400/80 shadow-red-500/20' 
-                    : 'border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20'
-                }`}
-              >
-                <h2 className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
-                  isLocationDangerous(data!) 
-                    ? 'from-red-300 to-orange-300' 
-                    : 'from-blue-300 to-cyan-300'
-                }`}>
-                  {data!.city}
-                  {isLocationDangerous(data!) && (
-                    <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
-                  )}
-                </h2>
-                <div className="grid grid-cols-2 gap-8">
-                  <MetricTile 
-                    icon={<WiThermometer size={48} />} 
-                    title="🌡️ Temperature" 
-                    value={`${data!.temperature}°C`}
-                    isAlert={data!.temperature >= 35}
-                  />
-                  <MetricTile 
-                    icon={<WiRain size={48} />} 
-                    title="💧 Rainfall" 
-                    value={`${data!.rainfall}mm`}
-                    isAlert={data!.rainfall >= 2.5}
-                  />
-                  <MetricTile 
-                    icon={<WiStrongWind size={48} />} 
-                    title="💨 Wind" 
-                    value={`${data!.wind} km/h`}
-                    isAlert={data!.wind >= 30}
-                  />
-                  <MetricTile 
-                    icon={<WiDaySunny size={48} />} 
-                    title="😌 Comfort" 
-                    value={`${data!.comfort}/10`}
-                    isAlert={data!.comfort <= 3}
-                  />
+            {/* Location 1 Card */}
+            <div
+              className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
+                loc1 && isLocationDangerous(loc1)
+                  ? "border-red-500/60 hover:border-red-400/80 shadow-red-500/20"
+                  : "border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20"
+              }`}
+            >
+              {!location1Data ? (
+                // Empty state for Location 1
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">📍</div>
+                  <h2 className="text-2xl font-bold text-gray-300 mb-4">
+                    Choose Location 1
+                  </h2>
+                  <p className="text-gray-400">
+                    Select a location on the map to get weather data
+                  </p>
                 </div>
-              </div>
-            ))}
+              ) : isLoadingLocation1 ? (
+                // Loading state for Location 1
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-400 border-t-transparent mx-auto mb-4"></div>
+                  <h2 className="text-2xl font-bold text-blue-300 mb-2">
+                    Loading {location1Data.name}
+                  </h2>
+                  <p className="text-gray-400">Fetching weather data...</p>
+                </div>
+              ) : errorLocation1 ? (
+                // Error state for Location 1
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">❌</div>
+                  <h2 className="text-2xl font-bold text-red-300 mb-2">
+                    Error Loading Data
+                  </h2>
+                  <p className="text-red-400 text-sm">{errorLocation1}</p>
+                  <button
+                    onClick={() =>
+                      location1Data &&
+                      fetchWeatherForLocation(location1Data, true)
+                    }
+                    className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : loc1 ? (
+                // Data loaded for Location 1
+                <>
+                  <h2
+                    className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
+                      isLocationDangerous(loc1)
+                        ? "from-red-300 to-orange-300"
+                        : "from-blue-300 to-cyan-300"
+                    }`}
+                  >
+                    {loc1.city}
+                    {isLocationDangerous(loc1) && (
+                      <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
+                    )}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-8">
+                    <MetricTile
+                      icon={<WiThermometer size={48} />}
+                      title="🌡️ Temperature"
+                      value={`${loc1.temperature}°C`}
+                      isAlert={loc1.temperature >= 35}
+                    />
+                    <MetricTile
+                      icon={<WiRain size={48} />}
+                      title="💧 Rainfall"
+                      value={`${loc1.rainfall}mm`}
+                      isAlert={loc1.rainfall >= 2.5}
+                    />
+                    <MetricTile
+                      icon={<WiStrongWind size={48} />}
+                      title="💨 Wind"
+                      value={`${loc1.wind}km/h`}
+                      isAlert={loc1.wind >= 30}
+                    />
+                    <MetricTile
+                      icon={<WiDaySunny size={48} />}
+                      title="😊 Comfort"
+                      value={`${loc1.comfort}/10`}
+                      isAlert={loc1.comfort <= 4}
+                    />
+                  </div>
+                  <div className="mt-8 text-center">
+                    <span
+                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
+                        loc1.forecast[selectedDate] === "rain"
+                          ? "bg-blue-500/20 text-blue-300"
+                          : loc1.forecast[selectedDate] === "snow"
+                          ? "bg-purple-500/20 text-purple-300"
+                          : "bg-yellow-500/20 text-yellow-300"
+                      }`}
+                    >
+                      {loc1.forecast[selectedDate] === "rain"
+                        ? "🌧️ Rainy"
+                        : loc1.forecast[selectedDate] === "snow"
+                        ? "❄️ Snowy"
+                        : "☀️ Sunny"}
+                    </span>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            {/* Location 2 Card */}
+            <div
+              className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
+                loc2 && isLocationDangerous(loc2)
+                  ? "border-red-500/60 hover:border-red-400/80 shadow-red-500/20"
+                  : "border-purple-400/40 hover:border-purple-300/60 hover:shadow-purple-500/20"
+              }`}
+            >
+              {!location2Data ? (
+                // Empty state for Location 2
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">📍</div>
+                  <h2 className="text-2xl font-bold text-gray-300 mb-4">
+                    Choose Location 2
+                  </h2>
+                  <p className="text-gray-400">
+                    {location1Data
+                      ? "Select a second location to compare"
+                      : "Select Location 1 first"}
+                  </p>
+                </div>
+              ) : !apiWeatherData1 ? (
+                // Waiting for Location 1 to complete
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">⏳</div>
+                  <h2 className="text-2xl font-bold text-yellow-300 mb-4">
+                    Waiting...
+                  </h2>
+                  <p className="text-gray-400">
+                    Please wait for Location 1 data to load first
+                  </p>
+                </div>
+              ) : isLoadingLocation2 ? (
+                // Loading state for Location 2
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-400 border-t-transparent mx-auto mb-4"></div>
+                  <h2 className="text-2xl font-bold text-purple-300 mb-2">
+                    Loading {location2Data.name}
+                  </h2>
+                  <p className="text-gray-400">Fetching weather data...</p>
+                </div>
+              ) : errorLocation2 ? (
+                // Error state for Location 2
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">❌</div>
+                  <h2 className="text-2xl font-bold text-red-300 mb-2">
+                    Error Loading Data
+                  </h2>
+                  <p className="text-red-400 text-sm">{errorLocation2}</p>
+                  <button
+                    onClick={() =>
+                      location2Data &&
+                      fetchWeatherForLocation(location2Data, false)
+                    }
+                    className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : loc2 ? (
+                // Data loaded for Location 2
+                <>
+                  <h2
+                    className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
+                      isLocationDangerous(loc2)
+                        ? "from-red-300 to-orange-300"
+                        : "from-purple-300 to-pink-300"
+                    }`}
+                  >
+                    {loc2.city}
+                    {isLocationDangerous(loc2) && (
+                      <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
+                    )}
+                  </h2>
+                  <div className="grid grid-cols-2 gap-8">
+                    <MetricTile
+                      icon={<WiThermometer size={48} />}
+                      title="🌡️ Temperature"
+                      value={`${loc2.temperature}°C`}
+                      isAlert={loc2.temperature >= 35}
+                    />
+                    <MetricTile
+                      icon={<WiRain size={48} />}
+                      title="💧 Rainfall"
+                      value={`${loc2.rainfall}mm`}
+                      isAlert={loc2.rainfall >= 2.5}
+                    />
+                    <MetricTile
+                      icon={<WiStrongWind size={48} />}
+                      title="💨 Wind"
+                      value={`${loc2.wind}km/h`}
+                      isAlert={loc2.wind >= 30}
+                    />
+                    <MetricTile
+                      icon={<WiDaySunny size={48} />}
+                      title="😊 Comfort"
+                      value={`${loc2.comfort}/10`}
+                      isAlert={loc2.comfort <= 4}
+                    />
+                  </div>
+                  <div className="mt-8 text-center">
+                    <span
+                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
+                        loc2.forecast[selectedDate] === "rain"
+                          ? "bg-blue-500/20 text-blue-300"
+                          : loc2.forecast[selectedDate] === "snow"
+                          ? "bg-purple-500/20 text-purple-300"
+                          : "bg-yellow-500/20 text-yellow-300"
+                      }`}
+                    >
+                      {loc2.forecast[selectedDate] === "rain"
+                        ? "🌧️ Rainy"
+                        : loc2.forecast[selectedDate] === "snow"
+                        ? "❄️ Snowy"
+                        : "☀️ Sunny"}
+                    </span>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
 
           {/* Enhanced Summary */}
           <div className="text-center bg-white/5 backdrop-blur-lg rounded-2xl p-8 max-w-4xl mx-auto border border-blue-400/30">
-            <h3 className="text-2xl font-bold mb-6 text-blue-300">📊 Comparison Summary</h3>
+            <h3 className="text-2xl font-bold mb-6 text-blue-300">
+              📊 Comparison Summary
+            </h3>
             <div className="grid md:grid-cols-2 gap-6 text-lg">
               <div className="space-y-3">
-                <p className="text-blue-200">🌡️ <b className="text-yellow-300">{hotter}</b> is hotter, <b className="text-cyan-300">{colder}</b> is colder</p>
-                <p className="text-blue-200">🌧️ More rainfall in <b className="text-blue-300">{wetter}</b></p>
+                <p className="text-blue-200">
+                  🌡️ <b className="text-yellow-300">{hotter}</b> is hotter,{" "}
+                  <b className="text-cyan-300">{colder}</b> is colder
+                </p>
+                <p className="text-blue-200">
+                  🌧️ More rainfall in <b className="text-blue-300">{wetter}</b>
+                </p>
               </div>
               <div className="space-y-3">
-                <p className="text-blue-200">💨 Windier conditions in <b className="text-gray-300">{windier}</b></p>
-                <p className="text-blue-200">📅 Weather forecast for <b className="text-purple-300">{selectedDate}</b></p>
+                <p className="text-blue-200">
+                  💨 Windier conditions in{" "}
+                  <b className="text-gray-300">{windier}</b>
+                </p>
+                <p className="text-blue-200">
+                  📅 Weather forecast for{" "}
+                  <b className="text-purple-300">{selectedDate}</b>
+                </p>
               </div>
             </div>
           </div>

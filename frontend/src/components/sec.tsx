@@ -285,28 +285,7 @@ export default function WeatherWise() {
         .leaflet-container { background-color: #1e3a5f; }
       `}</style>
 
-      <header className="flex items-center justify-between px-6 py-4 border-b border-gray-800 relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
-            <CloudRain className="w-5 h-5" />
-          </div>
-          <span className="text-xl font-bold">WeatherWise</span>
-        </div>
-        <nav className="flex items-center gap-6">
-          <a href="#" className="text-gray-300 hover:text-white transition">
-            Home
-          </a>
-          <a href="#" className="text-gray-300 hover:text-white transition">
-            Dashboard
-          </a>
-          <a href="#" className="text-gray-300 hover:text-white transition">
-            Map
-          </a>
-        </nav>
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-pink-500 rounded-full"></div>
-        </div>
-      </header>
+     
 
       <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
         <div className="text-center mb-12">
@@ -444,9 +423,7 @@ export default function WeatherWise() {
         </div>
       </main>
 
-      <footer className="text-center py-6 text-gray-400 text-sm border-t border-gray-800 mt-12">
-        © 2024 WeatherWise. Powered by NASA Data. All rights reserved.
-      </footer>
+      
     </div>
   );
 }

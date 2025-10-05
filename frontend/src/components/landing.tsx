@@ -128,7 +128,7 @@ export default function SkyCastLanding() {
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-6">
           <button
-            onClick={() => navigate("/compare")}
+            onClick={() => navigate("/plan")}
             className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold rounded-full transition-all transform hover:scale-105 shadow-lg shadow-blue-500/30"
           >
             Start Planning
