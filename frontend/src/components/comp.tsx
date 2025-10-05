@@ -944,23 +944,7 @@ const CompareLocations: React.FC = () => {
                       value={`${loc1.comfort}/10`}
                     />
                   </div>
-                  <div className="mt-8 text-center">
-                    <span
-                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
-                        loc1.forecast[selectedDate] === "rain"
-                          ? "bg-blue-500/20 text-blue-300"
-                          : loc1.forecast[selectedDate] === "snow"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-yellow-500/20 text-yellow-300"
-                      }`}
-                    >
-                      {loc1.forecast[selectedDate] === "rain"
-                        ? "🌧️ Rainy"
-                        : loc1.forecast[selectedDate] === "snow"
-                        ? "❄️ Snowy"
-                        : "☀️ Sunny"}
-                    </span>
-                  </div>
+                  
                 </>
               ) : null}
             </div>
@@ -1060,23 +1044,7 @@ const CompareLocations: React.FC = () => {
                       value={`${loc2.comfort}/10`}
                     />
                   </div>
-                  <div className="mt-8 text-center">
-                    <span
-                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
-                        loc2.forecast[selectedDate] === "rain"
-                          ? "bg-blue-500/20 text-blue-300"
-                          : loc2.forecast[selectedDate] === "snow"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-yellow-500/20 text-yellow-300"
-                      }`}
-                    >
-                      {loc2.forecast[selectedDate] === "rain"
-                        ? "🌧️ Rainy"
-                        : loc2.forecast[selectedDate] === "snow"
-                        ? "❄️ Snowy"
-                        : "☀️ Sunny"}
-                    </span>
-                  </div>
+                  
                 </>
               ) : null}
             </div>
