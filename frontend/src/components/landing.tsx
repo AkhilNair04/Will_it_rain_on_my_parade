@@ -1,4 +1,3 @@
-import React from "react";
 import { Cloud, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MikeButton } from "./MikeButton";

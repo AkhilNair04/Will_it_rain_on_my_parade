@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { CloudRain, ChevronLeft, ChevronRight, Calendar } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import WorldMap from "../components/worldmap"; // Import the new WorldMap component
 
@@ -7,9 +7,7 @@ export default function WeatherWise() {
   const navigate = useNavigate();
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState<number>(today.getDate());
-  const [selectedFilters, setSelectedFilters] = useState<string[]>([
-    "Very Wet",
-  ]);
+
   const [currentMonth, setCurrentMonth] = useState<Date>(
     new Date(today.getFullYear(), today.getMonth())
   );
@@ -24,7 +22,6 @@ export default function WeatherWise() {
 
   // Weather API state
   const [weatherLoading, setWeatherLoading] = useState(false);
-  const [weatherData, setWeatherData] = useState<any>(null);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
   // Create a full date object from state for display
@@ -38,22 +35,6 @@ export default function WeatherWise() {
     month: "long",
     day: "numeric",
   });
-
-  const filters: string[] = [
-    "Very Hot",
-    "Very Cold",
-    "Very Wet",
-    "Very Windy",
-    "Very Uncomfortable",
-  ];
-
-  const toggleFilter = (filter: string): void => {
-    setSelectedFilters((prev) =>
-      prev.includes(filter)
-        ? prev.filter((f) => f !== filter)
-        : [...prev, filter]
-    );
-  };
 
   // Handle location updates from WorldMap component
   const handleLocationUpdate = (
@@ -130,7 +111,6 @@ export default function WeatherWise() {
       }
 
       const data = await response.json();
-      setWeatherData(data);
       setWeatherLoading(false);
 
       console.log("✅ [WEATHER API] Weather data received:");
@@ -285,8 +265,6 @@ export default function WeatherWise() {
         .leaflet-container { background-color: #1e3a5f; }
       `}</style>
 
-     
-
       <main className="max-w-7xl mx-auto px-6 py-12 relative z-10">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold mb-4">Plan Your Perfect Day</h1>
@@ -422,8 +400,6 @@ export default function WeatherWise() {
           )}
         </div>
       </main>
-
-      
     </div>
   );
 }
