@@ -394,10 +394,14 @@ const InteractiveMap = ({
 const CompareLocations: React.FC = () => {
   const [location1, setLocation1] = useState<string | null>(null);
   const [location2, setLocation2] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState("2025-10-04");
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    return today.toISOString().split('T')[0];
+  });
   const [weatherMode, setWeatherMode] = useState<"rain" | "snow" | "sunny">(
     "sunny"
   );
+  const [showPastDatePopup, setShowPastDatePopup] = useState(false);
 
   const [showMap, setShowMap] = useState(true); // Start with map visible
   const [location1Data, setLocation1Data] = useState<{
@@ -676,7 +680,22 @@ const CompareLocations: React.FC = () => {
               <input
                 type="date"
                 value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                onChange={(e) => {
+                  const selectedDateValue = e.target.value;
+                  const today = new Date();
+                  const selected = new Date(selectedDateValue);
+                  
+                  // Set time to start of day for accurate comparison
+                  today.setHours(0, 0, 0, 0);
+                  selected.setHours(0, 0, 0, 0);
+                  
+                  if (selected < today) {
+                    setShowPastDatePopup(true);
+                    return;
+                  }
+                  
+                  setSelectedDate(selectedDateValue);
+                }}
                 className="px-8 py-3 rounded-lg bg-black/30 backdrop-blur-sm text-white font-medium border border-blue-500/40 focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 transition-all duration-300 shadow-lg shadow-black/20 hover:shadow-blue-500/20 hover:border-blue-400/60 cursor-pointer min-w-[200px]"
                 style={{
                   colorScheme: "dark",
@@ -925,23 +944,7 @@ const CompareLocations: React.FC = () => {
                       value={`${loc1.comfort}/10`}
                     />
                   </div>
-                  <div className="mt-8 text-center">
-                    <span
-                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
-                        loc1.forecast[selectedDate] === "rain"
-                          ? "bg-blue-500/20 text-blue-300"
-                          : loc1.forecast[selectedDate] === "snow"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-yellow-500/20 text-yellow-300"
-                      }`}
-                    >
-                      {loc1.forecast[selectedDate] === "rain"
-                        ? "🌧️ Rainy"
-                        : loc1.forecast[selectedDate] === "snow"
-                        ? "❄️ Snowy"
-                        : "☀️ Sunny"}
-                    </span>
-                  </div>
+                  
                 </>
               ) : null}
             </div>
@@ -1041,23 +1044,7 @@ const CompareLocations: React.FC = () => {
                       value={`${loc2.comfort}/10`}
                     />
                   </div>
-                  <div className="mt-8 text-center">
-                    <span
-                      className={`inline-block px-4 py-2 rounded-full font-semibold ${
-                        loc2.forecast[selectedDate] === "rain"
-                          ? "bg-blue-500/20 text-blue-300"
-                          : loc2.forecast[selectedDate] === "snow"
-                          ? "bg-purple-500/20 text-purple-300"
-                          : "bg-yellow-500/20 text-yellow-300"
-                      }`}
-                    >
-                      {loc2.forecast[selectedDate] === "rain"
-                        ? "🌧️ Rainy"
-                        : loc2.forecast[selectedDate] === "snow"
-                        ? "❄️ Snowy"
-                        : "☀️ Sunny"}
-                    </span>
-                  </div>
+                  
                 </>
               ) : null}
             </div>
@@ -1092,6 +1079,33 @@ const CompareLocations: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Past Date Warning Popup */}
+      {showPastDatePopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-gradient-to-br from-red-900/90 to-red-800/90 backdrop-blur-md rounded-xl p-8 max-w-md mx-4 border border-red-500/30 shadow-2xl">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Invalid Date Selection</h3>
+              <p className="text-red-100 mb-6">
+                Please select the current date or a future date. Past dates are not available for weather prediction.
+              </p>
+              <button
+                onClick={() => setShowPastDatePopup(false)}
+                className="bg-red-600 hover:bg-red-500 text-white font-medium px-6 py-2 rounded-lg transition-colors duration-200 shadow-lg hover:shadow-red-500/25"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Enhanced Animations */}
       <style>{`
