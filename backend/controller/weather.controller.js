@@ -83,7 +83,32 @@ export const predictWeather = async (req, res) => {
         res.json(final_result);
 
     } catch (error) {
-        console.error("❌ [WEATHER CONTROLLER] An error occurred:", error.message);
-        res.status(500).json({ message: "An internal server error occurred.", details: error.message });
+        console.error("❌ [WEATHER CONTROLLER] An error occurred:");
+        console.error("❌ [WEATHER CONTROLLER] Error message:", error.message);
+        console.error("❌ [WEATHER CONTROLLER] Error stack:", error.stack);
+        
+        // More specific error messages
+        if (error.message.includes('NASA')) {
+            console.error("❌ [WEATHER CONTROLLER] NASA API Error detected");
+            res.status(500).json({ 
+                message: "NASA API service error", 
+                details: error.message,
+                type: "NASA_API_ERROR"
+            });
+        } else if (error.message.includes('OpenWeatherMap') || error.message.includes('Weather')) {
+            console.error("❌ [WEATHER CONTROLLER] OpenWeatherMap API Error detected");
+            res.status(500).json({ 
+                message: "Weather API service error", 
+                details: error.message,
+                type: "WEATHER_API_ERROR"
+            });
+        } else {
+            console.error("❌ [WEATHER CONTROLLER] General error");
+            res.status(500).json({ 
+                message: "An internal server error occurred.", 
+                details: error.message,
+                type: "GENERAL_ERROR"
+            });
+        }
     }
 };
