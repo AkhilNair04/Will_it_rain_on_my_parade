@@ -5,13 +5,7 @@ import {
   WiStrongWind,
   WiDaySunny,
 } from "react-icons/wi";
-import {
-  FiSearch,
-  FiAlertTriangle,
-  FiXCircle,
-  FiMap,
-  FiMapPin,
-} from "react-icons/fi";
+import { FiSearch, FiMap, FiMapPin } from "react-icons/fi";
 import {
   MapContainer,
   TileLayer,
@@ -167,38 +161,17 @@ const MetricTile = ({
   icon,
   title,
   value,
-  isAlert = false,
 }: {
   icon: React.ReactNode;
   title: string;
   value: string;
-  isAlert?: boolean;
 }) => (
-  <div
-    className={`bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 min-h-[120px] ${
-      isAlert
-        ? "border-red-500/60 bg-red-500/10 animate-pulse"
-        : "border-blue-400/30"
-    }`}
-  >
+  <div className="bg-white/10 backdrop-blur-lg p-8 rounded-xl shadow-xl hover:bg-white/20 border transition-all duration-300 min-h-[120px] border-blue-400/30">
     <div className="flex items-center gap-3 mb-4">
-      {isAlert && <FiAlertTriangle className="text-red-400 animate-bounce" />}
       {icon}
-      <span
-        className={`font-bold text-xl ${
-          isAlert ? "text-red-300" : "text-blue-300"
-        }`}
-      >
-        {title}
-      </span>
+      <span className="font-bold text-xl text-blue-300">{title}</span>
     </div>
-    <span
-      className={`text-2xl font-bold ${
-        isAlert ? "text-red-200" : "text-white"
-      }`}
-    >
-      {value}
-    </span>
+    <span className="text-2xl font-bold text-white">{value}</span>
   </div>
 );
 
@@ -425,10 +398,7 @@ const CompareLocations: React.FC = () => {
   const [weatherMode, setWeatherMode] = useState<"rain" | "snow" | "sunny">(
     "sunny"
   );
-  const [alertMessage, setAlertMessage] = useState<string | null>(null);
-  const [alertType, setAlertType] = useState<"danger" | "warning" | "info">(
-    "danger"
-  );
+
   const [showMap, setShowMap] = useState(true); // Start with map visible
   const [location1Data, setLocation1Data] = useState<{
     lat: number;
@@ -572,8 +542,6 @@ const CompareLocations: React.FC = () => {
   // Function to handle sequential comparison when Compare button is clicked
   const handleCompare = async () => {
     if (!location1Data || !location2Data) {
-      setAlertMessage("Please select both locations before comparing!");
-      setAlertType("warning");
       return;
     }
 
@@ -600,8 +568,7 @@ const CompareLocations: React.FC = () => {
       console.log("✅ Sequential comparison completed!");
     } catch (error) {
       console.error("❌ Error during comparison:", error);
-      setAlertMessage("Failed to complete comparison. Please try again.");
-      setAlertType("danger");
+      console.error("Failed to complete comparison");
     }
   };
 
@@ -628,85 +595,6 @@ const CompareLocations: React.FC = () => {
     else setWeatherMode("sunny");
   }, [selectedDate, location1, location2, loc1?.forecast, loc2?.forecast]);
 
-  // Enhanced danger pop-up alerts with different severity levels
-  useEffect(() => {
-    const dangerAlerts: string[] = [];
-    const warningAlerts: string[] = [];
-    const infoAlerts: string[] = [];
-
-    [loc1, loc2]
-      .filter((loc) => loc !== null)
-      .forEach((loc) => {
-        // Extreme danger conditions
-        if (loc!.temperature >= 50) {
-          dangerAlerts.push(
-            `🚨 EXTREME HEAT in ${loc!.city}: ${
-              loc!.temperature
-            }°C - Life threatening!`
-          );
-        } else if (loc!.temperature >= 46) {
-          warningAlerts.push(
-            `🔥 Heat Warning in ${loc!.city}: ${
-              loc!.temperature
-            }°C - Stay hydrated!`
-          );
-        }
-
-        if (loc!.rainfall >= 5.0) {
-          dangerAlerts.push(
-            `🌊 FLOOD ALERT in ${loc!.city}: ${
-              loc!.rainfall
-            }mm - Seek higher ground!`
-          );
-        } else if (loc!.rainfall >= 3) {
-          warningAlerts.push(
-            `🌧️ Heavy Rain in ${loc!.city}: ${loc!.rainfall}mm - Flood risk`
-          );
-        }
-
-        if (loc!.wind >= 50) {
-          dangerAlerts.push(
-            `💨 STORM WARNING in ${loc!.city}: ${loc!.wind}km/h - Stay indoors!`
-          );
-        } else if (loc!.wind >= 20) {
-          warningAlerts.push(
-            `🌪️ Strong Winds in ${loc!.city}: ${
-              loc!.wind
-            }km/h - Avoid outdoor activities`
-          );
-        }
-
-        if (loc!.comfort <= 3) {
-          infoAlerts.push(
-            `😰 Poor comfort conditions in ${loc!.city}: ${loc!.comfort}/10`
-          );
-        }
-      });
-
-    let message = "";
-    let type: "danger" | "warning" | "info" = "info";
-
-    if (dangerAlerts.length > 0) {
-      message = dangerAlerts.join("\n");
-      type = "danger";
-    } else if (warningAlerts.length > 0) {
-      message = warningAlerts.join("\n");
-      type = "warning";
-    } else if (infoAlerts.length > 0) {
-      message = infoAlerts.join("\n");
-      type = "info";
-    }
-
-    if (message) {
-      setAlertMessage(message);
-      setAlertType(type);
-      const timeout = setTimeout(() => setAlertMessage(null), 8000);
-      return () => clearTimeout(timeout);
-    } else {
-      setAlertMessage(null);
-    }
-  }, [loc1, loc2]);
-
   // Comparison summary
   const hotter =
     loc1 && loc2
@@ -728,28 +616,6 @@ const CompareLocations: React.FC = () => {
       : "N/A";
   const windier =
     loc1 && loc2 ? (loc1.wind > loc2.wind ? loc1.city : loc2.city) : "N/A";
-
-  const getAlertStyle = (type: "danger" | "warning" | "info") => {
-    switch (type) {
-      case "danger":
-        return "bg-red-600/95 border-red-500";
-      case "warning":
-        return "bg-orange-600/95 border-orange-500";
-      case "info":
-        return "bg-blue-600/95 border-blue-500";
-      default:
-        return "bg-red-600/95 border-red-500";
-    }
-  };
-
-  const isLocationDangerous = (loc: LocationData) => {
-    return (
-      loc.temperature >= 35 ||
-      loc.rainfall >= 2.5 ||
-      loc.wind >= 30 ||
-      loc.comfort <= 3
-    );
-  };
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-black via-blue-950 to-slate-900 text-white font-poppins overflow-hidden">
@@ -795,43 +661,6 @@ const CompareLocations: React.FC = () => {
           </div>
           <div className="absolute inset-0 bg-gradient-to-t from-blue-950/15 via-transparent to-transparent z-0"></div>
         </>
-      )}
-
-      {/* Enhanced Pop-up Alert */}
-      {alertMessage && (
-        <div
-          className={`fixed top-6 right-6 ${getAlertStyle(
-            alertType
-          )} text-white p-6 rounded-2xl shadow-2xl z-50 max-w-md animate-popIn border-2`}
-        >
-          <div className="flex justify-between items-start">
-            <div>
-              <div className="flex items-center gap-3 font-bold text-lg mb-2">
-                <FiAlertTriangle
-                  className={`${
-                    alertType === "danger"
-                      ? "text-red-300 animate-bounce"
-                      : alertType === "warning"
-                      ? "text-orange-300"
-                      : "text-blue-300"
-                  } text-xl`}
-                />
-                {alertType === "danger"
-                  ? "DANGER ALERT"
-                  : alertType === "warning"
-                  ? "WARNING"
-                  : "INFO"}
-              </div>
-              <p className="text-sm whitespace-pre-line leading-relaxed">
-                {alertMessage}
-              </p>
-            </div>
-            <FiXCircle
-              className="cursor-pointer ml-4 hover:text-gray-300 transition-colors text-xl"
-              onClick={() => setAlertMessage(null)}
-            />
-          </div>
-        </div>
       )}
 
       {/* Main Content */}
@@ -1017,13 +846,7 @@ const CompareLocations: React.FC = () => {
           {/* Weather Data Cards */}
           <div className="flex flex-wrap justify-center gap-10 mb-12">
             {/* Location 1 Card */}
-            <div
-              className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
-                loc1 && isLocationDangerous(loc1)
-                  ? "border-red-500/60 hover:border-red-400/80 shadow-red-500/20"
-                  : "border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20"
-              }`}
-            >
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 border-blue-400/40 hover:border-blue-300/60 hover:shadow-blue-500/20">
               {!location1Data ? (
                 // Empty state for Location 1
                 <div className="text-center py-16">
@@ -1077,42 +900,29 @@ const CompareLocations: React.FC = () => {
               ) : loc1 ? (
                 // Data loaded for Location 1
                 <>
-                  <h2
-                    className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
-                      isLocationDangerous(loc1)
-                        ? "from-red-300 to-orange-300"
-                        : "from-blue-300 to-cyan-300"
-                    }`}
-                  >
+                  <h2 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-cyan-300">
                     {loc1.city}
-                    {isLocationDangerous(loc1) && (
-                      <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
-                    )}
                   </h2>
                   <div className="grid grid-cols-2 gap-8">
                     <MetricTile
                       icon={<WiThermometer size={48} />}
                       title="🌡️ Temperature"
                       value={`${loc1.temperature}°C`}
-                      isAlert={loc1.temperature >= 35}
                     />
                     <MetricTile
                       icon={<WiRain size={48} />}
                       title="💧 Rainfall"
                       value={`${loc1.rainfall}mm`}
-                      isAlert={loc1.rainfall >= 2.5}
                     />
                     <MetricTile
                       icon={<WiStrongWind size={48} />}
                       title="💨 Wind"
                       value={`${loc1.wind}km/h`}
-                      isAlert={loc1.wind >= 30}
                     />
                     <MetricTile
                       icon={<WiDaySunny size={48} />}
                       title="😊 Comfort"
                       value={`${loc1.comfort}/10`}
-                      isAlert={loc1.comfort <= 4}
                     />
                   </div>
                   <div className="mt-8 text-center">
@@ -1137,13 +947,7 @@ const CompareLocations: React.FC = () => {
             </div>
 
             {/* Location 2 Card */}
-            <div
-              className={`bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 ${
-                loc2 && isLocationDangerous(loc2)
-                  ? "border-red-500/60 hover:border-red-400/80 shadow-red-500/20"
-                  : "border-purple-400/40 hover:border-purple-300/60 hover:shadow-purple-500/20"
-              }`}
-            >
+            <div className="bg-white/10 backdrop-blur-xl rounded-3xl p-10 w-[450px] h-auto shadow-2xl border-2 transition-all duration-500 transform hover:scale-105 border-purple-400/40 hover:border-purple-300/60 hover:shadow-purple-500/20">
               {!location2Data ? (
                 // Empty state for Location 2
                 <div className="text-center py-16">
@@ -1212,42 +1016,29 @@ const CompareLocations: React.FC = () => {
               ) : loc2 ? (
                 // Data loaded for Location 2
                 <>
-                  <h2
-                    className={`text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r ${
-                      isLocationDangerous(loc2)
-                        ? "from-red-300 to-orange-300"
-                        : "from-purple-300 to-pink-300"
-                    }`}
-                  >
+                  <h2 className="text-3xl font-bold mb-8 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-pink-300">
                     {loc2.city}
-                    {isLocationDangerous(loc2) && (
-                      <FiAlertTriangle className="inline ml-2 text-red-400 animate-pulse" />
-                    )}
                   </h2>
                   <div className="grid grid-cols-2 gap-8">
                     <MetricTile
                       icon={<WiThermometer size={48} />}
                       title="🌡️ Temperature"
                       value={`${loc2.temperature}°C`}
-                      isAlert={loc2.temperature >= 35}
                     />
                     <MetricTile
                       icon={<WiRain size={48} />}
                       title="💧 Rainfall"
                       value={`${loc2.rainfall}mm`}
-                      isAlert={loc2.rainfall >= 2.5}
                     />
                     <MetricTile
                       icon={<WiStrongWind size={48} />}
                       title="💨 Wind"
                       value={`${loc2.wind}km/h`}
-                      isAlert={loc2.wind >= 30}
                     />
                     <MetricTile
                       icon={<WiDaySunny size={48} />}
                       title="😊 Comfort"
                       value={`${loc2.comfort}/10`}
-                      isAlert={loc2.comfort <= 4}
                     />
                   </div>
                   <div className="mt-8 text-center">
