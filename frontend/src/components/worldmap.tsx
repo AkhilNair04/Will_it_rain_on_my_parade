@@ -22,6 +22,14 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
+// Additional CSS fix for map display
+const mapStyle = {
+  height: "100%", 
+  width: "100%", 
+  borderRadius: "0.75rem",
+  zIndex: 0
+};
+
 // Helper component to change the map's view programmatically
 function ChangeMapView({ coords }: { coords: L.LatLng }) {
   const map = useMap();
@@ -256,12 +264,13 @@ export default function WorldMap({ onLocationUpdate }: WorldMapProps) {
 
   return (
     <div className="bg-gray-800/30 rounded-2xl p-4 border border-gray-700">
-      <div className="relative h-64 rounded-xl overflow-hidden">
+      <div className="relative h-64 rounded-xl overflow-hidden bg-gray-900">
         <MapContainer
           center={markerPosition || [20, 0]}
-          zoom={3}
+          zoom={2}
           scrollWheelZoom={true}
-          style={{ height: "100%", width: "100%" }}
+          style={mapStyle}
+          className="z-0"
         >
           {/* Search bar form */}
           <form
