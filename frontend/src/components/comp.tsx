@@ -440,12 +440,6 @@ const CompareLocations: React.FC = () => {
     lng: number;
     name: string;
   } | null>(null);
-  const [customLocation1, setCustomLocation1] = useState<LocationData | null>(
-    null
-  );
-  const [customLocation2, setCustomLocation2] = useState<LocationData | null>(
-    null
-  );
 
   // API data states
   const [apiWeatherData1, setApiWeatherData1] = useState<LocationData | null>(
@@ -575,65 +569,54 @@ const CompareLocations: React.FC = () => {
     [selectedDate]
   );
 
-  // Trigger API call when location1 is selected
-  useEffect(() => {
-    if (location1Data && selectedDate) {
-      console.log("🎯 Location 1 selected, fetching weather...");
-      fetchWeatherForLocation(location1Data, true);
+  // Function to handle sequential comparison when Compare button is clicked
+  const handleCompare = async () => {
+    if (!location1Data || !location2Data) {
+      setAlertMessage("Please select both locations before comparing!");
+      setAlertType("warning");
+      return;
     }
-  }, [location1Data, selectedDate, fetchWeatherForLocation]);
 
-  // Trigger API call for location2 AFTER location1 data is ready
-  useEffect(() => {
-    if (location2Data && selectedDate && apiWeatherData1) {
-      console.log(
-        "🎯 Location 2 selected and Location 1 ready, fetching weather..."
-      );
-      fetchWeatherForLocation(location2Data, false);
+    try {
+      // Clear previous data
+      setApiWeatherData1(null);
+      setApiWeatherData2(null);
+      setErrorLocation1(null);
+      setErrorLocation2(null);
+
+      console.log("🔄 Starting sequential comparison...");
+
+      // First API call - Location 1
+      console.log("📍 Step 1: Fetching data for Location 1...");
+      await fetchWeatherForLocation(location1Data, true);
+
+      // Wait a moment to ensure state is updated
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Second API call - Location 2 (only after Location 1 completes)
+      console.log("📍 Step 2: Fetching data for Location 2...");
+      await fetchWeatherForLocation(location2Data, false);
+
+      console.log("✅ Sequential comparison completed!");
+    } catch (error) {
+      console.error("❌ Error during comparison:", error);
+      setAlertMessage("Failed to complete comparison. Please try again.");
+      setAlertType("danger");
     }
-  }, [location2Data, selectedDate, apiWeatherData1, fetchWeatherForLocation]);
+  };
 
   // Generate random weather data for custom locations
-  const generateWeatherData = (location: {
-    lat: number;
-    lng: number;
-    name: string;
-  }): LocationData => {
-    return {
-      id: `custom_${Date.now()}_${Math.random()}`,
-      city: location.name,
-      temperature: Math.round(15 + Math.random() * 25), // 15-40°C
-      rainfall: Math.round(Math.random() * 5 * 10) / 10, // 0-5mm
-      wind: Math.round(5 + Math.random() * 35), // 5-40 km/h
-      comfort: Math.round(3 + Math.random() * 7), // 3-10
-      lat: location.lat,
-      lng: location.lng,
-      forecast: {
-        "2025-10-04":
-          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-        "2025-10-05":
-          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-        "2025-10-06":
-          Math.random() > 0.6 ? "rain" : Math.random() > 0.5 ? "sunny" : "snow",
-      },
-    };
-  };
 
-  // Get location data (prioritize API data over static data)
+  // Get location data (only return API data after comparison)
   const getLocationData = (
-    locationId: string | null,
-    customData: LocationData | null,
     apiData: LocationData | null
   ): LocationData | null => {
-    if (apiData) return apiData; // Use API data if available
-    if (customData) return customData;
-    if (locationId)
-      return allLocationsData.find((l) => l.id === locationId) || null;
-    return null;
+    // Only return API data after comparison is done
+    return apiData;
   };
 
-  const loc1 = getLocationData(location1, customLocation1, apiWeatherData1);
-  const loc2 = getLocationData(location2, customLocation2, apiWeatherData2);
+  const loc1 = getLocationData(apiWeatherData1);
+  const loc2 = getLocationData(apiWeatherData2);
 
   // Auto-detect weather mode from selected date
   useEffect(() => {
@@ -814,27 +797,6 @@ const CompareLocations: React.FC = () => {
         </>
       )}
 
-      {weatherMode === "sunny" && (
-        <>
-          <div className="absolute top-10 right-10 w-24 h-24 bg-gradient-to-br from-yellow-300 to-orange-400 rounded-full animate-sunPulse shadow-2xl shadow-yellow-500/30 z-0"></div>
-          <div className="absolute inset-0 bg-gradient-to-br from-yellow-500/15 via-orange-500/10 to-red-500/5 animate-sunGlow z-0"></div>
-          <div className="absolute inset-0 overflow-hidden z-0">
-            {[...Array(20)].map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-1 h-1 bg-yellow-300 rounded-full opacity-40 animate-float"
-                style={{
-                  left: `${Math.random() * 100}%`,
-                  top: `${Math.random() * 100}%`,
-                  animationDelay: `${Math.random() * 5}s`,
-                  animationDuration: `${3 + Math.random() * 4}s`,
-                }}
-              />
-            ))}
-          </div>
-        </>
-      )}
-
       {/* Enhanced Pop-up Alert */}
       {alertMessage && (
         <div
@@ -875,8 +837,8 @@ const CompareLocations: React.FC = () => {
       {/* Main Content */}
       <div className="relative z-10 px-6 py-8">
         <div className="max-w-7xl mx-auto">
-          <h1 className="text-6xl font-bold mb-12 text-center text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-            🌍 Compare Locations
+          <h1 className="text-5xl font-bold mb-12 text-center">
+            Compare Locations
           </h1>
 
           {/* Date Selection */}
@@ -914,6 +876,7 @@ const CompareLocations: React.FC = () => {
               <div className="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto">
                 <InteractiveMap
                   onLocationSelect={(location) => {
+                    console.log("📍 Location 1 selected:", location.name);
                     setLocation1Data(location);
                     const matchingLocation = allLocationsData.find(
                       (loc) =>
@@ -922,13 +885,12 @@ const CompareLocations: React.FC = () => {
                     );
                     if (matchingLocation) {
                       setLocation1(matchingLocation.id);
-                      setCustomLocation1(null); // Clear custom location
                     } else {
-                      // Create custom weather data for selected location
-                      const customData = generateWeatherData(location);
-                      setCustomLocation1(customData);
-                      setLocation1(customData.id); // Use custom ID
+                      // Only store location data, don't generate weather data yet
+                      setLocation1(null);
                     }
+                    // Clear any previous API data
+                    setApiWeatherData1(null);
                   }}
                   title="Location 1"
                   selectedLocation={location1Data || undefined}
@@ -936,6 +898,7 @@ const CompareLocations: React.FC = () => {
                 />
                 <InteractiveMap
                   onLocationSelect={(location) => {
+                    console.log("📍 Location 2 selected:", location.name);
                     setLocation2Data(location);
                     const matchingLocation = allLocationsData.find(
                       (loc) =>
@@ -944,18 +907,76 @@ const CompareLocations: React.FC = () => {
                     );
                     if (matchingLocation) {
                       setLocation2(matchingLocation.id);
-                      setCustomLocation2(null); // Clear custom location
                     } else {
-                      // Create custom weather data for selected location
-                      const customData = generateWeatherData(location);
-                      setCustomLocation2(customData);
-                      setLocation2(customData.id); // Use custom ID
+                      // Only store location data, don't generate weather data yet
+                      setLocation2(null);
                     }
+                    // Clear any previous API data
+                    setApiWeatherData2(null);
                   }}
                   title="Location 2"
                   selectedLocation={location2Data || undefined}
                   className="w-full"
                 />
+              </div>
+
+              {/* Compare Button */}
+              <div className="text-center mt-8">
+                <button
+                  onClick={handleCompare}
+                  disabled={
+                    !location1Data ||
+                    !location2Data ||
+                    isLoadingLocation1 ||
+                    isLoadingLocation2
+                  }
+                  className={`px-8 py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center gap-3 mx-auto shadow-lg ${
+                    !location1Data ||
+                    !location2Data ||
+                    isLoadingLocation1 ||
+                    isLoadingLocation2
+                      ? "bg-gray-600 cursor-not-allowed text-gray-300"
+                      : "bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white transform hover:scale-105 shadow-green-500/20 hover:shadow-xl"
+                  }`}
+                >
+                  {isLoadingLocation1 || isLoadingLocation2 ? (
+                    <>
+                      <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent"></div>
+                      Comparing...
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-2xl">⚖️</span>
+                      Compare Locations
+                    </>
+                  )}
+                </button>
+
+                {/* Selection Status */}
+                <div className="mt-4 flex justify-center gap-8">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        location1Data ? "bg-green-400" : "bg-gray-400"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-300">
+                      Location 1:{" "}
+                      {location1Data ? location1Data.name : "Not selected"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-3 h-3 rounded-full ${
+                        location2Data ? "bg-green-400" : "bg-gray-400"
+                      }`}
+                    ></div>
+                    <span className="text-sm text-gray-300">
+                      Location 2:{" "}
+                      {location2Data ? location2Data.name : "Not selected"}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1011,7 +1032,7 @@ const CompareLocations: React.FC = () => {
                     Choose Location 1
                   </h2>
                   <p className="text-gray-400">
-                    Select a location on the map to get weather data
+                    Select a location on the map above
                   </p>
                 </div>
               ) : isLoadingLocation1 ? (
@@ -1040,6 +1061,18 @@ const CompareLocations: React.FC = () => {
                   >
                     Retry
                   </button>
+                </div>
+              ) : !loc1 && location1Data ? (
+                // Location selected but not compared yet
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">🏞️</div>
+                  <h2 className="text-2xl font-bold text-blue-300 mb-4">
+                    {location1Data.name}
+                  </h2>
+                  <p className="text-gray-400 mb-2">Location selected!</p>
+                  <p className="text-sm text-blue-300">
+                    Click "Compare Locations" to get weather data
+                  </p>
                 </div>
               ) : loc1 ? (
                 // Data loaded for Location 1
@@ -1161,6 +1194,20 @@ const CompareLocations: React.FC = () => {
                   >
                     Retry
                   </button>
+                </div>
+              ) : !loc2 && location2Data ? (
+                // Location selected but not compared yet
+                <div className="text-center py-16">
+                  <div className="text-6xl mb-4">🏞️</div>
+                  <h2 className="text-2xl font-bold text-purple-300 mb-4">
+                    {location2Data.name}
+                  </h2>
+                  <p className="text-gray-400 mb-2">Location selected!</p>
+                  <p className="text-sm text-purple-300">
+                    {location1Data
+                      ? 'Click "Compare Locations" to get weather data'
+                      : "Select Location 1 first, then compare"}
+                  </p>
                 </div>
               ) : loc2 ? (
                 // Data loaded for Location 2
