@@ -8,7 +8,11 @@ import weatherRoutes from "./routes/weather.routes.js";
 dotenv.config();
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: ["https://skyzero.netlify.app/plan", "http://localhost:5173"],
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+}));
 app.use(express.json());
 
 // Routes
