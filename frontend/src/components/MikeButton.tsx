@@ -14,7 +14,7 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
     setBackendError(null);
     setBackendResponse(null);
     try {
-      const res = await fetch("http://localhost:5000/api/weather", {
+      const res = await fetch("https://will-it-rain-on-my-parade-sal3.onrender.com/api/weather", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

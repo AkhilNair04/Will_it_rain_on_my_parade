@@ -115,7 +115,7 @@ export default function WeatherWise() {
       console.log("🌤️ [WEATHER API] Making weather request:");
       console.log("   - Request data:", requestData);
 
-      const response = await fetch("http://localhost:5000/api/weather/", {
+      const response = await fetch("https://will-it-rain-on-my-parade-sal3.onrender.com/api/weather/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

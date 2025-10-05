@@ -456,7 +456,7 @@ const CompareLocations: React.FC = () => {
 
         // POST request to weather API
         const weatherResponse = await fetch(
-          "http://localhost:5000/api/weather",
+          "https://will-it-rain-on-my-parade-sal3.onrender.com/api/weather",
           {
             method: "POST",
             headers: {
