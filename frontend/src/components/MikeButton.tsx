@@ -7,25 +7,22 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
   const { isListening, transcript, error, startListening } = useVoiceProcessor();
   const [backendResponse, setBackendResponse] = useState<any | null>(null);
   const [backendError, setBackendError] = useState<string | null>(null);
-  const [userInteracted, setUserInteracted] = useState(false); // Track first click for voice permission
+  const [userInteracted, setUserInteracted] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
-  // Send payload to backend
   const postToBackend = async (payload: BackendPayload) => {
     setBackendError(null);
     setBackendResponse(null);
-
     try {
       const res = await fetch("http://localhost:5000/api/weather", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!res.ok) {
         const text = await res.text();
         throw new Error(`Server error ${res.status}: ${text}`);
       }
-
       const data = await res.json();
       setBackendResponse(data);
     } catch (e: any) {
@@ -33,10 +30,8 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
     }
   };
 
-  // Build spoken summary
   const buildSpokenSummary = (resp: any) => {
     if (!resp) return "";
-
     const loc = resp.input_location?.name || resp.city || "";
     const date = resp.input_location?.forecast_date || resp.date || "";
     const rainMm = resp.prediction_output?.predicted_rainfall_mm ?? resp.predicted_rainfall_mm;
@@ -53,44 +48,36 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
       const mmText = rainMm != null ? `${rainMm} mm` : "";
       parts.push(`${rainOutlook ?? ""}${mmText ? " (" + mmText + ")" : ""}`.trim());
     }
-  if (finalSummary) parts.push(finalSummary);
-  if (temp) parts.push(`Temperature: ${temp}`);
-  if (wind) parts.push(`Wind: ${wind}`);
-  if (erosion) parts.push(`Erosion risk: ${erosion}`);
-  if (pop != null) parts.push(`POP ${pop}%`);
-
+    if (finalSummary) parts.push(finalSummary);
+    if (temp) parts.push(`Temperature: ${temp}`);
+    if (wind) parts.push(`Wind: ${wind}`);
+    if (erosion) parts.push(`Erosion risk: ${erosion}`);
+    if (pop != null) parts.push(`POP ${pop}%`);
     return parts.join(". ").replace(/\s+/g, " ").trim();
   };
 
-  // Speak function (called manually or after backend response)
   const speakSummary = (resp = backendResponse) => {
     if (!resp || !window.speechSynthesis) return;
-
     const text = buildSpokenSummary(resp);
     if (!text) return;
-
     try {
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = "en-US";
       utter.rate = 1;
       utter.pitch = 1;
-      window.speechSynthesis.cancel(); // Stop any ongoing speech
+      window.speechSynthesis.cancel();
       window.speechSynthesis.speak(utter);
     } catch (e) {
       console.warn("Speech synth failed", e);
     }
   };
 
-  // Auto speak when backend response arrives (only after first user interaction)
   useEffect(() => {
-    if (backendResponse && userInteracted) {
-      speakSummary();
-    }
+    if (backendResponse && userInteracted) speakSummary();
   }, [backendResponse, userInteracted]);
 
-  // Handle user clicking the button
   const handleClick = () => {
-    setUserInteracted(true); // mark first interaction
+    setUserInteracted(true);
     startListening((payload) => {
       if (onResult) onResult(payload);
       else console.log("Voice payload:", payload);
@@ -100,22 +87,26 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
 
   return (
     <div className="flex flex-col items-center">
+      {/* Mike Button */}
       <button
         onClick={handleClick}
-        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-md shadow-sm"
+        className="flex items-center gap-2 px-5 py-3 rounded-full shadow-lg bg-gradient-to-r from-red-500 to-blue-500 hover:from-red-600 hover:to-blue-600 text-white font-semibold transition-all transform hover:scale-105"
         aria-pressed={isListening}
       >
         {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-        <span>{isListening ? "Listening..." : "Ask Mike"}</span>
+        <span>{isListening ? "Listening..." : "Talk to Assistant"}</span>
       </button>
 
+      {/* Transcript */}
       {transcript && <p className="text-sm text-gray-300 mt-2">"{transcript}"</p>}
+
+      {/* Errors */}
       {error && <p className="text-sm text-rose-400 mt-1">{error}</p>}
       {backendError && <p className="text-sm text-rose-400 mt-2">{backendError}</p>}
 
+      {/* Backend Response Card */}
       {backendResponse && (
         <div className="w-full mt-3">
-          {/* Summary Card */}
           <div className="bg-white/5 p-4 rounded-md shadow-sm text-left">
             <div className="flex items-start justify-between">
               <div>
@@ -172,11 +163,31 @@ export const MikeButton: React.FC<{ onResult?: (payload: BackendPayload) => void
               <p className="text-sm text-gray-200 mt-3">{backendResponse.prediction_output.final_summary}</p>
             )}
 
-            <div className="mt-3 flex items-center justify-end">
+            {/* Replay & Show Details Buttons */}
+            <div className="mt-3 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => speakSummary()}
+                  className="text-sm text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1 rounded"
+                >
+                  Replay
+                </button>
+                <button
+                  onClick={() => setShowDetails((s) => !s)}
+                  className="text-sm text-white/90 bg-white/10 hover:bg-white/20 px-3 py-1 rounded"
+                >
+                  {showDetails ? "Hide details" : "Show details"}
+                </button>
+              </div>
               <div className="text-xs text-gray-400">Updated from backend</div>
             </div>
-          </div>
 
+            {showDetails && (
+              <pre className="text-xs text-gray-200 mt-2 p-2 bg-white/5 rounded max-w-full overflow-x-auto">
+                {JSON.stringify(backendResponse, null, 2)}
+              </pre>
+            )}
+          </div>
         </div>
       )}
     </div>
