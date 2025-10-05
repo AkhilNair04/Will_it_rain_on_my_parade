@@ -16,10 +16,14 @@ export default function Landing() {
           <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-blue-400 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
             <Cloud className="text-white w-7 h-7 sm:w-8 sm:h-8" />
           </div>
-          <h1 className="text-5xl sm:text-7xl font-bold text-white tracking-wide">SkyCast</h1>
+          <h1 className="text-5xl sm:text-7xl font-bold text-white tracking-wide">
+            WeatherWise
+          </h1>
         </div>
 
-        <p className="text-gray-300 text-lg sm:text-xl mb-10">Predict the Perfect Day — Powered by NASA’s Weather Intelligence.</p>
+        <p className="text-gray-300 text-lg sm:text-xl mb-10">
+          Predict the Perfect Day — Powered by NASA’s Weather Intelligence.
+        </p>
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-6 mb-6">
